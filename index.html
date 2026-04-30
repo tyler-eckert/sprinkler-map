@@ -320,7 +320,8 @@ function rProperties(){
     ?`<div class="empty"><div class="empty-icon">🏡</div>No properties yet.<br>Add your first property below.</div>`
     :S.properties.map(p=>`<div class="list-item" onclick="S.property=S.properties.find(x=>x.id==='${p.id}');loadZones('${p.id}')">
       <div><div class="list-item-name">${esc(p.name)}</div><div class="list-item-meta">${esc(p.address||'No address')}</div></div>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline-green" onclick="event.stopPropagation();exportPropertyCSV('${p.id}')">Export CSV</button>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteProperty('${p.id}')">Delete</button>
         <span class="chevron">›</span>
       </div>
@@ -358,6 +359,7 @@ function rZones(){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <span style="font-size:16px;font-weight:600;">Zones (${S.zones.length})</span>
       <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm btn-outline-green" onclick="exportPropertyCSV('${p.id}')">Export CSV</button>
         <button class="btn btn-sm" onclick="setView('summary')">Summary</button>
         <button class="btn btn-sm btn-green" onclick="setView('add-zone')">+ Add zone</button>
       </div>
@@ -546,6 +548,33 @@ function rSummary(){
     </div>
     <div style="height:40px;"></div>
   </div>`;
+}
+
+async function exportPropertyCSV(pid){
+  toast('Preparing CSV...');
+  const{data:zones}=await sb.from('zones').select('*').eq('property_id',pid).order('created_at');
+  const{data:heads}=await sb.from('heads').select('*').in('zone_id',(zones||[]).map(z=>z.id)).order('created_at');
+  const prop=S.properties.find(p=>p.id===pid)||{};
+  const rows=[['Property','Address','Zone','Area','Head #','Brand','Type','Arc','Radius (ft)','Grass','Latitude','Longitude','Notes']];
+  (zones||[]).forEach(z=>{
+    const zh=(heads||[]).filter(h=>h.zone_id===z.id);
+    if(zh.length===0){
+      rows.push([prop.name,prop.address||'',z.name,z.area||'','','','','','','','','','']);
+    } else {
+      zh.forEach((h,hi)=>{
+        rows.push([prop.name,prop.address||'',z.name,z.area||'',hi+1,h.brand,h.type,h.arc,h.radius||'',h.grass||'',h.lat||'',h.lng||'',h.notes||'']);
+      });
+    }
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`${(prop.name||'property').replace(/\s+/g,'-').toLowerCase()}-sprinkler-map.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV downloaded!');
 }
 
 initAuth().then(()=>{if(S.view==='properties')loadProperties();});
