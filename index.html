@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Sprinkler Map</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1a6b3c;
+    --green-light: #e8f5ee;
+    --green-mid: #4caf7d;
+    --amber: #b45309;
+    --amber-light: #fef3c7;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+    --blue: #1d4ed8;
+    --blue-light: #dbeafe;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: var(--font); background: var(--gray-100); color: var(--gray-900); min-height: 100vh; }
+
+  /* TOP NAV */
+  .topbar { background: var(--green); color: #fff; padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+  .topbar-sub { font-size: 11px; opacity: 0.75; margin-top: 1px; font-family: var(--mono); }
+  .topbar-btn { background: rgba(255,255,255,0.18); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-family: var(--font); cursor: pointer; }
+
+  /* ZONE STRIP */
+  .zone-strip { background: #fff; border-bottom: 1px solid var(--gray-200); overflow-x: auto; white-space: nowrap; padding: 10px 12px; scrollbar-width: none; display: flex; gap: 6px; }
+  .zone-strip::-webkit-scrollbar { display: none; }
+  .zone-pill { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 20px; border: 1.5px solid var(--gray-200); background: #fff; font-size: 13px; font-weight: 500; color: var(--gray-600); cursor: pointer; white-space: nowrap; }
+  .zone-pill.active { border-color: var(--green); background: var(--green-light); color: var(--green); }
+  .zone-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-300); }
+  .zone-pill.active .dot { background: var(--green-mid); }
+  .zone-pill.sum { border-style: dashed; }
+  .zone-pill.sum.active { border-style: solid; }
+
+  /* MAIN */
+  .main { padding: 16px; max-width: 520px; margin: 0 auto; }
+
+  /* CARDS */
+  .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
+
+  /* FORM */
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--gray-600); margin-bottom: 5px; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 11px 13px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-size: 15px; font-family: var(--font); color: var(--gray-900); background: var(--gray-50);
+    outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus, select:focus, textarea:focus { border-color: var(--green); background: #fff; }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 16px; border-radius: var(--radius-sm); border: 1.5px solid var(--gray-200); background: #fff; color: var(--gray-700); font-size: 14px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.12s; }
+  .btn:active { transform: scale(0.97); }
+  .btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-green:active { background: #145a32; }
+  .btn-outline-green { border-color: var(--green); color: var(--green); }
+  .btn-sm { padding: 7px 12px; font-size: 13px; }
+  .btn-full { width: 100%; }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-icon { padding: 10px; border-radius: 50%; width: 40px; height: 40px; }
+
+  /* HEAD CARDS */
+  .head-item { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 13px; margin-bottom: 8px; }
+  .head-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .head-num { font-size: 11px; font-family: var(--mono); color: var(--gray-400); }
+  .head-name { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+  .head-meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .head-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-gps { background: var(--green-light); color: var(--green); }
+  .badge-nogps { background: var(--gray-100); color: var(--gray-400); border: 1px solid var(--gray-200); }
+  .badge-rotor { background: var(--blue-light); color: var(--blue); }
+  .badge-mist { background: var(--amber-light); color: var(--amber); }
+  .badge-drip { background: #f0fdf4; color: #166534; }
+
+  /* GPS SECTION */
+  .gps-box { background: var(--green-light); border: 1.5px solid #a7d7bb; border-radius: var(--radius-sm); padding: 13px; margin-bottom: 12px; }
+  .gps-box.no-gps { background: var(--gray-50); border-color: var(--gray-200); }
+  .gps-coords { font-family: var(--mono); font-size: 12px; color: var(--green); margin: 6px 0 10px; }
+  .gps-coords.no-gps { color: var(--gray-400); }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 600; color: var(--gray-900); line-height: 1; }
+  .stat-lbl { font-size: 11px; color: var(--gray-400); margin-top: 4px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* PROGRESS */
+  .prog-bar { height: 6px; background: var(--gray-200); border-radius: 20px; overflow: hidden; margin: 6px 0 4px; }
+  .prog-fill { height: 100%; background: var(--green-mid); border-radius: 20px; transition: width 0.3s; }
+
+  /* ZONE ROW */
+  .zone-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer; }
+  .zone-row:active { background: var(--green-light); }
+  .zone-row-name { font-size: 14px; font-weight: 600; }
+  .zone-row-meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .chevron { color: var(--gray-300); font-size: 16px; }
+
+  /* EXPORT */
+  .export-box { background: var(--gray-900); color: #86efac; font-family: var(--mono); font-size: 11px; border-radius: var(--radius-sm); padding: 14px; white-space: pre-wrap; max-height: 260px; overflow-y: auto; line-height: 1.6; }
+
+  /* MAP LINK */
+  .map-link { display: inline-flex; align-items: center; gap: 4px; color: var(--blue); font-size: 12px; text-decoration: none; padding: 5px 10px; border: 1px solid #bfdbfe; border-radius: 20px; background: var(--blue-light); }
+
+  /* BACK BTN */
+  .back-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .back-btn { display: flex; align-items: center; gap: 4px; color: var(--green); font-size: 14px; font-weight: 500; background: none; border: none; cursor: pointer; padding: 4px 0; font-family: var(--font); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--gray-900); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-family: var(--font); z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* SPINNER */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--gray-200); margin: 14px 0; }
+
+  /* FAB */
+  .fab { position: fixed; bottom: 24px; right: 20px; width: 52px; height: 52px; border-radius: 50%; background: var(--green); border: none; color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Sprinkler Map</div>
+    <div class="topbar-sub" id="topbar-sub">Loading...</div>
+  </div>
+  <button class="topbar-btn" onclick="showView('summary')">Summary</button>
+</div>
+
+<div class="zone-strip" id="zone-strip"></div>
+
+<div class="main" id="main"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const HEAD_TYPES = ['Rotor','Fixed mist','MP rotator','Drip emitter','Bubbler','Other'];
+const BRANDS = ['Rain Bird','Hunter','Toro','Orbit','K-Rain','Weathermatic','Other'];
+const ARCS = ['Full (360°)','Half (180°)','Quarter (90°)','Custom'];
+
+function mkHead() {
+  return { id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36), brand:'Rain Bird', type:'Rotor', arc:'Full (360°)', radius:'', grass:'', lat:'', lng:'', notes:'' };
+}
+function mkZone(n) {
+  return { name:'Zone '+n, area:'', waterDays:'', runTime:'', notes:'', heads:[mkHead()] };
+}
+
+let state = { zones: [], activeZ: 0, view: 'zone', activeH: null };
+
+function save() {
+  try { localStorage.setItem('sprinklermap_v3', JSON.stringify(state)); } catch(e) {}
+}
+function load() {
+  try {
+    const d = localStorage.getItem('sprinklermap_v3');
+    if (d) { state = JSON.parse(d); return; }
+  } catch(e) {}
+  state.zones = [];
+  for (let i = 1; i <= 12; i++) state.zones.push(mkZone(i));
+}
+load();
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function showView(v, z, h) {
+  if (z !== undefined) state.activeZ = z;
+  if (h !== undefined) state.activeH = h;
+  state.view = v;
+  save();
+  render();
+}
+
+function zname(i) { return state.zones[i].name || ('Zone ' + (i+1)); }
+
+function typeBadge(type) {
+  if (type === 'Rotor' || type === 'MP rotator') return `<span class="badge badge-rotor">${type}</span>`;
+  if (type === 'Fixed mist') return `<span class="badge badge-mist">${type}</span>`;
+  if (type === 'Drip emitter' || type === 'Bubbler') return `<span class="badge badge-drip">${type}</span>`;
+  return `<span class="badge">${type}</span>`;
+}
+
+function renderStrip() {
+  const strip = document.getElementById('zone-strip');
+  let html = '';
+  state.zones.forEach((z, i) => {
+    const active = state.view !== 'summary' && state.activeZ === i;
+    const gpsCount = z.heads.filter(h => h.lat && h.lng).length;
+    const dot = gpsCount === z.heads.length ? 'background:var(--green-mid)' : gpsCount > 0 ? 'background:var(--amber)' : '';
+    html += `<button class="zone-pill${active?' active':''}" onclick="showView('zone',${i})">
+      <span class="dot" style="${dot}"></span>${z.name||'Zone '+(i+1)}
+    </button>`;
+  });
+  html += `<button class="zone-pill sum${state.view==='summary'?' active':''}" onclick="showView('summary')">Summary</button>`;
+  strip.innerHTML = html;
+}
+
+function updateTopbar() {
+  const sub = document.getElementById('topbar-sub');
+  const total = state.zones.reduce((a,z) => a+z.heads.length, 0);
+  const gps = state.zones.reduce((a,z) => a+z.heads.filter(h=>h.lat&&h.lng).length, 0);
+  sub.textContent = `${state.zones.length} zones · ${total} heads · ${gps} GPS tagged`;
+}
+
+function render() {
+  renderStrip();
+  updateTopbar();
+  const main = document.getElementById('main');
+  if (state.view === 'zone') renderZone(main);
+  else if (state.view === 'head') renderHead(main);
+  else renderSummary(main);
+  window.scrollTo(0, 0);
+}
+
+function renderZone(main) {
+  const zi = state.activeZ;
+  const z = state.zones[zi];
+
+  let headsHtml = z.heads.map((h, hi) => {
+    const hasGps = h.lat && h.lng;
+    const gpsBadge = hasGps
+      ? `<span class="badge badge-gps">&#10003; GPS</span>`
+      : `<span class="badge badge-nogps">No GPS</span>`;
+    return `<div class="head-item">
+      <div class="head-item-top">
+        <div>
+          <div class="head-num">HEAD ${hi+1}</div>
+          <div class="head-name">${h.brand} ${h.type}</div>
+          <div class="head-meta">${h.arc}${h.radius ? ' · ' + h.radius + ' ft' : ''}${h.nozzle ? ' · ' + h.nozzle : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${gpsBadge}
+          <button class="btn btn-sm btn-danger" onclick="deleteHead(${zi},${hi})">Remove</button>
+        </div>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-sm btn-outline-green" onclick="showView('head',${zi},${hi})">Edit details</button>
+        <button class="btn btn-sm btn-green" id="gps-btn-${hi}" onclick="captureGPS(${zi},${hi})">${hasGps ? 'Update GPS' : 'Capture GPS'}</button>
+        ${hasGps ? `<a class="map-link" href="https://maps.apple.com/?q=${h.lat},${h.lng}" target="_blank">&#9679; Map</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <div class="card">
+      <div class="card-title">Zone info</div>
+      <div class="field">
+        <label>Zone name</label>
+        <input type="text" id="zn" value="${esc(z.name)}" placeholder="e.g. Front lawn">
+      </div>
+      <div class="field">
+        <label>Area / description</label>
+        <input type="text" id="za" value="${esc(z.area)}" placeholder="e.g. East side flower beds">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="zno" placeholder="Pressure issues, recent repairs...">${esc(z.notes)}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-size:14px;font-weight:600;">Heads (${z.heads.length})</span>
+      <button class="btn btn-sm btn-green" onclick="addHead(${zi})">+ Add head</button>
+    </div>
+    ${headsHtml}
+    <div style="height:80px;"></div>
+  `;
+
+  document.getElementById('zn').addEventListener('input', e => { state.zones[zi].name = e.target.value; save(); renderStrip(); updateTopbar(); });
+  document.getElementById('za').addEventListener('input', e => { state.zones[zi].area = e.target.value; save(); });
+  document.getElementById('zno').addEventListener('input', e => { state.zones[zi].notes = e.target.value; save(); });
+}
+
+function renderHead(main) {
+  const zi = state.activeZ;
+  const hi = state.activeH;
+  const h = state.zones[zi].heads[hi];
+  const hasGps = h.lat && h.lng;
+
+  main.innerHTML = `
+    <div class="back-row">
+      <button class="back-btn" onclick="showView('zone',${zi})">&#8592; ${zname(zi)}</button>
+    </div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:16px;">Head ${hi+1}</div>
+
+    <div class="card">
+      <div class="card-title">Head details</div>
+      <div class="field">
+        <label>Brand</label>
+        <select id="hb">${BRANDS.map(b=>`<option${h.brand===b?' selected':''}>${b}</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label>Head type</label>
+        <select id="ht">${HEAD_TYPES.map(t=>`<option${h.type===t?' selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Arc coverage</label>
+          <select id="ha">${ARCS.map(a=>`<option${h.arc===a?' selected':''}>${a}</option>`).join('')}</select>
+        </div>
+        <div class="field">
+          <label>Throw radius (ft)</label>
+          <input type="text" id="hr" value="${esc(h.radius)}" placeholder="e.g. 12">
+        </div>
+      </div>
+      <div class="field">
+        <label>Primary grass type</label>
+        <select id="hgrass">
+          <option value="">— Select —</option>
+          <option${h.grass==='Bermuda'?' selected':''}>Bermuda</option>
+          <option${h.grass==='Fescue'?' selected':''}>Fescue</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="hno" placeholder="Clogged, broken cap, low pressure...">${esc(h.notes)}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">GPS location</div>
+      <div class="${hasGps ? 'gps-box' : 'gps-box no-gps'}" id="gps-status-box">
+        <div style="font-size:13px;font-weight:500;color:${hasGps?'var(--green)':'var(--gray-600)'}">
+          ${hasGps ? '&#10003; Location saved' : 'No GPS tag yet'}
+        </div>
+        ${hasGps
+          ? `<div class="gps-coords">${h.lat}, ${h.lng}</div>
+             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+               <button class="btn btn-sm btn-green" id="gps-capture-btn" onclick="captureGPS(${zi},${hi})">Update location</button>
+               <a class="map-link" href="https://maps.apple.com/?q=${h.lat},${h.lng}" target="_blank">Open in Maps</a>
+               <a class="map-link" href="https://maps.google.com/?q=${h.lat},${h.lng}" target="_blank">Google Maps</a>
+             </div>`
+          : `<div class="gps-coords no-gps">Stand over this head and tap below</div>
+             <button class="btn btn-green btn-full" id="gps-capture-btn" onclick="captureGPS(${zi},${hi})">Capture my location</button>`
+        }
+      </div>
+      <div style="margin-top:12px;">
+        <label style="margin-bottom:6px;display:block;">Or enter coordinates manually</label>
+        <div class="row2">
+          <div class="field">
+            <label>Latitude</label>
+            <input type="text" id="hlat" value="${esc(h.lat)}" placeholder="e.g. 33.7490" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Longitude</label>
+            <input type="text" id="hlng" value="${esc(h.lng)}" placeholder="e.g. -84.3880" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+      ${hasGps ? `<button class="btn btn-sm btn-danger" onclick="clearGPS(${zi},${hi})" style="margin-top:4px;">Clear GPS tag</button>` : ''}
+    </div>
+    <div style="height:80px;"></div>
+  `;
+
+  document.getElementById('hb').onchange = e => { state.zones[zi].heads[hi].brand = e.target.value; save(); };
+  document.getElementById('ht').onchange = e => { state.zones[zi].heads[hi].type = e.target.value; save(); };
+  document.getElementById('ha').onchange = e => { state.zones[zi].heads[hi].arc = e.target.value; save(); };
+  document.getElementById('hr').oninput = e => { state.zones[zi].heads[hi].radius = e.target.value; save(); };
+  document.getElementById('hgrass').onchange = e => { state.zones[zi].heads[hi].grass = e.target.value; save(); };
+  document.getElementById('hno').oninput = e => { state.zones[zi].heads[hi].notes = e.target.value; save(); };
+  document.getElementById('hlat').oninput = e => { state.zones[zi].heads[hi].lat = e.target.value; save(); };
+  document.getElementById('hlng').oninput = e => { state.zones[zi].heads[hi].lng = e.target.value; save(); };
+}
+
+function renderSummary(main) {
+  const zones = state.zones;
+  let total = 0, gpsCount = 0, rotors = 0, misters = 0, drip = 0;
+  zones.forEach(z => z.heads.forEach(h => {
+    total++;
+    if (h.lat && h.lng) gpsCount++;
+    if (h.type === 'Rotor' || h.type === 'MP rotator') rotors++;
+    else if (h.type === 'Fixed mist') misters++;
+    else if (h.type === 'Drip emitter' || h.type === 'Bubbler') drip++;
+  }));
+
+  const pct = total > 0 ? Math.round(gpsCount / total * 100) : 0;
+
+  let zoneRows = zones.map((z, i) => {
+    const hgps = z.heads.filter(h => h.lat && h.lng).length;
+    const zpct = z.heads.length > 0 ? Math.round(hgps / z.heads.length * 100) : 0;
+    return `<div class="zone-row" onclick="showView('zone',${i})">
+      <div>
+        <div class="zone-row-name">${z.name || 'Zone '+(i+1)}</div>
+        <div class="zone-row-meta">${z.heads.length} heads · ${hgps}/${z.heads.length} GPS · ${z.area||'No area set'}</div>
+        <div class="prog-bar" style="width:120px;margin-top:6px;"><div class="prog-fill" style="width:${zpct}%"></div></div>
+      </div>
+      <div class="chevron">&#8250;</div>
+    </div>`;
+  }).join('');
+
+  const exportTxt = zones.map((z, i) => {
+    let lines = [
+      `ZONE ${i+1}: ${z.name}`,
+      `Area: ${z.area||'—'}`,
+      `Notes: ${z.notes||'—'}`,
+      `Heads (${z.heads.length}):`
+    ];
+    z.heads.forEach((h, hi) => {
+      const gps = h.lat && h.lng ? ` | GPS: ${h.lat},${h.lng}` : '';
+      lines.push(`  ${hi+1}. ${h.brand} ${h.type} | ${h.arc} | ${h.radius||'?'}ft | Grass: ${h.grass||'—'}${h.notes?' | '+h.notes:''}${gps}`);
+    });
+    return lines.join('\n');
+  }).join('\n\n');
+
+  const csvRows = [['Zone','Zone Name','Area','Head #','Brand','Type','Arc','Radius (ft)','Grass Type','Latitude','Longitude','Notes']];
+  zones.forEach((z, i) => {
+    z.heads.forEach((h, hi) => {
+      csvRows.push([
+        i+1, z.name, z.area, hi+1, h.brand, h.type, h.arc, h.radius, h.grass||'', h.lat||'', h.lng||'', h.notes||''
+      ]);
+    });
+  });
+  const csvContent = csvRows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  main.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-val">${zones.length}</div><div class="stat-lbl">Zones</div></div>
+      <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Total heads</div></div>
+      <div class="stat"><div class="stat-val">${gpsCount}</div><div class="stat-lbl">GPS tagged</div></div>
+      <div class="stat"><div class="stat-val">${pct}%</div><div class="stat-lbl">Coverage</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title">GPS progress</div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:12px;color:var(--gray-400);margin-top:4px;">${gpsCount} of ${total} heads tagged</div>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title">Head types</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="badge badge-rotor">${rotors} rotor/MP</span>
+        <span class="badge badge-mist">${misters} mist</span>
+        <span class="badge badge-drip">${drip} drip/bubbler</span>
+        ${total-rotors-misters-drip > 0 ? `<span class="badge">${total-rotors-misters-drip} other</span>` : ''}
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">${zoneRows}</div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px;">Export data</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-green" onclick="copyExport()">Copy text</button>
+        <button class="btn btn-sm btn-green" onclick="emailCSV()">Email as CSV</button>
+      </div>
+      <div class="export-box" id="export-content">${exportTxt}</div>
+    </div>
+    <div style="height:40px;"></div>
+  `;
+
+  window._exportTxt = exportTxt;
+  window._csvContent = csvContent;
+}
+
+function copyExport() {
+  navigator.clipboard.writeText(window._exportTxt || '').then(() => toast('Copied to clipboard!')).catch(() => toast('Copy failed — select text manually'));
+}
+
+function emailCSV() {
+  const csv = window._csvContent || '';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sprinkler-map.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    const subject = encodeURIComponent('Sprinkler Map Data');
+    const body = encodeURIComponent('Sprinkler map CSV attached.\n\n' + (window._exportTxt || ''));
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }, 600);
+}
+
+function addHead(zi) {
+  state.zones[zi].heads.push(mkHead());
+  save();
+  render();
+}
+
+function deleteHead(zi, hi) {
+  if (state.zones[zi].heads.length <= 1) { toast('Zone must have at least one head'); return; }
+  if (confirm('Remove head ' + (hi+1) + '?')) {
+    state.zones[zi].heads.splice(hi, 1);
+    save();
+    render();
+  }
+}
+
+function clearGPS(zi, hi) {
+  state.zones[zi].heads[hi].lat = '';
+  state.zones[zi].heads[hi].lng = '';
+  save();
+  render();
+  toast('GPS cleared');
+}
+
+function captureGPS(zi, hi) {
+  if (!navigator.geolocation) { toast('GPS not available in this browser'); return; }
+  const btnId = state.view === 'head' ? 'gps-capture-btn' : `gps-btn-${hi}`;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.innerHTML = '<span class="spin"></span> Getting location...'; btn.disabled = true; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      state.zones[zi].heads[hi].lat = pos.coords.latitude.toFixed(7);
+      state.zones[zi].heads[hi].lng = pos.coords.longitude.toFixed(7);
+      save();
+      toast('GPS saved! ±' + Math.round(pos.coords.accuracy) + 'm accuracy');
+      render();
+    },
+    err => {
+      toast('Could not get location — allow location access and try again');
+      if (btn) { btn.innerHTML = 'Capture GPS'; btn.disabled = false; }
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+render();
+</script>
+</body>
+</html>
