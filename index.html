@@ -106,7 +106,7 @@ const BRANDS=['Rain Bird','Hunter','Toro','Orbit','K-Rain','Weathermatic','Other
 const ARCS=['Full (360°)','Half (180°)','Quarter (90°)','Custom'];
 const GRASSES=['Bermuda','Fescue'];
 
-let S={view:'loading',user:null,authMode:'login',property:null,zone:null,head:null,valve:null,zoneTab:'heads',properties:[],zones:[],heads:[]};
+let S={view:'loading',user:null,authMode:'login',property:null,zone:null,head:null,valve:null,zoneTab:'heads',editingZone:null,properties:[],zones:[],heads:[]};
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -187,6 +187,20 @@ async function saveZone(){
   const{data,error}=await sb.from('zones').insert({name,area,controller_zone,notes,property_id:S.property.id,user_id:S.user.id}).select().single();
   if(error){toast('Error: '+error.message);btn.textContent='Save zone';btn.disabled=false;return;}
   S.zones.push(data);toast('Zone saved!');S.zone=data;await loadHeads(data.id);
+}
+
+async function updateZone(){
+  const name=document.getElementById('zn').value.trim();
+  const area=document.getElementById('za').value.trim();
+  const controller_zone=document.getElementById('zctrl').value.trim();
+  const notes=document.getElementById('zno').value.trim();
+  if(!name){toast('Name is required');return;}
+  const btn=document.getElementById('zone-save');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+  const{data,error}=await sb.from('zones').update({name,area,controller_zone,notes}).eq('id',S.editingZone.id).select().single();
+  if(error){toast('Error: '+error.message);btn.textContent='Save changes';btn.disabled=false;return;}
+  S.zones=S.zones.map(z=>z.id===data.id?data:z);
+  S.editingZone=null;
+  toast('Zone updated!');setView('zones');
 }
 
 async function deleteZone(id){
@@ -348,7 +362,7 @@ function rBread(){
 
 window.bcGo=function(v){
   if(v==='properties'){S.property=null;S.zone=null;S.head=null;setView('properties');}
-  else if(v==='zones'){S.zone=null;S.head=null;setView('zones');}
+  else if(v==='zones'){S.zone=null;S.head=null;S.editingZone=null;setView('zones');}
   else if(v==='heads'){S.head=null;setView('heads');}
 };
 
@@ -403,7 +417,8 @@ function rZones(){
     ?`<div class="empty"><div class="empty-icon">💧</div>No zones yet.<br>Add your first zone below.</div>`
     :S.zones.map(z=>`<div class="list-item" onclick="S.zone=S.zones.find(x=>x.id==='${z.id}');loadHeads('${z.id}')">
       <div><div class="list-item-name">${esc(z.name)}${z.controller_zone?' <span style="font-size:11px;font-weight:400;color:var(--g400);">· Controller #'+esc(z.controller_zone)+'</span>':''}</div><div class="list-item-meta">${esc(z.area||'No area set')}</div></div>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline-green" onclick="event.stopPropagation();S.editingZone=S.zones.find(x=>x.id==='${z.id}');setView('add-zone')">Edit</button>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteZone('${z.id}')">Delete</button>
         <span class="chevron">›</span>
       </div>
@@ -420,15 +435,17 @@ function rZones(){
 }
 
 function rAddZone(){
-  return rTopbar('New Zone',esc(S.property?.name||''),false)+rBread()+`<div class="main">
-    <button class="back-btn" onclick="setView('zones')">← Back</button>
+  const isEdit=!!S.editingZone;
+  const z=S.editingZone||{};
+  return rTopbar(isEdit?'Edit Zone':'New Zone',esc(S.property?.name||''),false)+rBread()+`<div class="main">
+    <button class="back-btn" onclick="S.editingZone=null;setView('zones')">← Back</button>
     <div class="card">
       <div class="card-title">Zone details</div>
-      <div class="field"><label>Zone name *</label><input type="text" id="zn" placeholder="e.g. Front lawn, Back beds"></div>
-      <div class="field"><label>Area / description</label><input type="text" id="za" placeholder="e.g. East side flower beds"></div>
-      <div class="field"><label>Controller zone number</label><input type="text" id="zctrl" placeholder="e.g. 3" inputmode="numeric"></div>
-      <div class="field"><label>Notes</label><textarea id="zno" placeholder="Pressure issues, recent repairs..."></textarea></div>
-      <button class="btn btn-green btn-full" id="zone-save" onclick="saveZone()" style="margin-top:4px;">Save zone</button>
+      <div class="field"><label>Zone name *</label><input type="text" id="zn" value="${esc(z.name||'')}" placeholder="e.g. Front lawn, Back beds"></div>
+      <div class="field"><label>Area / description</label><input type="text" id="za" value="${esc(z.area||'')}" placeholder="e.g. East side flower beds"></div>
+      <div class="field"><label>Controller zone number</label><input type="text" id="zctrl" value="${esc(z.controller_zone||'')}" placeholder="e.g. 3" inputmode="numeric"></div>
+      <div class="field"><label>Notes</label><textarea id="zno" placeholder="Pressure issues, recent repairs...">${esc(z.notes||'')}</textarea></div>
+      <button class="btn btn-green btn-full" id="zone-save" onclick="${isEdit?'updateZone()':'saveZone()'}" style="margin-top:4px;">${isEdit?'Save changes':'Save zone'}</button>
     </div></div>`;
 }
 
