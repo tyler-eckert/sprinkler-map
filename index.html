@@ -106,7 +106,7 @@ const BRANDS=['Rain Bird','Hunter','Toro','Orbit','K-Rain','Weathermatic','Other
 const ARCS=['Full (360°)','Half (180°)','Quarter (90°)','Custom'];
 const GRASSES=['Bermuda','Fescue'];
 
-let S={view:'loading',user:null,authMode:'login',property:null,zone:null,head:null,properties:[],zones:[],heads:[]};
+let S={view:'loading',user:null,authMode:'login',property:null,zone:null,head:null,valve:null,zoneTab:'heads',properties:[],zones:[],heads:[]};
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -180,10 +180,11 @@ async function loadZones(pid){
 async function saveZone(){
   const name=document.getElementById('zn').value.trim();
   const area=document.getElementById('za').value.trim();
+  const controller_zone=document.getElementById('zctrl').value.trim();
   const notes=document.getElementById('zno').value.trim();
   if(!name){toast('Name is required');return;}
   const btn=document.getElementById('zone-save');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const{data,error}=await sb.from('zones').insert({name,area,notes,property_id:S.property.id,user_id:S.user.id}).select().single();
+  const{data,error}=await sb.from('zones').insert({name,area,controller_zone,notes,property_id:S.property.id,user_id:S.user.id}).select().single();
   if(error){toast('Error: '+error.message);btn.textContent='Save zone';btn.disabled=false;return;}
   S.zones.push(data);toast('Zone saved!');S.zone=data;await loadHeads(data.id);
 }
@@ -197,9 +198,12 @@ async function deleteZone(id){
 // HEADS
 async function loadHeads(zid){
   setView('loading');
-  const{data,error}=await sb.from('heads').select('*').eq('zone_id',zid).order('created_at');
+  const{data,error}=await sb.from('heads').select('*').eq('zone_id',zid).eq('item_type','head').order('created_at');
   if(error){toast('Error: '+error.message);return;}
-  S.heads=data||[];setView('heads');
+  S.heads=data||[];
+  await loadValve(zid);
+  S.zoneTab=S.zoneTab||'heads';
+  setView('heads');
 }
 
 async function saveHead(andAnother){
@@ -219,7 +223,7 @@ async function saveHead(andAnother){
   if(isEdit){
     res=await sb.from('heads').update({brand,type,arc,radius,grass,notes,lat:lat||null,lng:lng||null}).eq('id',S.head.id).select().single();
   }else{
-    res=await sb.from('heads').insert({brand,type,arc,radius,grass,notes,lat:lat||null,lng:lng||null,zone_id:S.zone.id,user_id:S.user.id}).select().single();
+    res=await sb.from('heads').insert({item_type:'head',brand,type,arc,radius,grass,notes,lat:lat||null,lng:lng||null,zone_id:S.zone.id,user_id:S.user.id}).select().single();
   }
   if(res.error){toast('Error: '+res.error.message);btn.textContent=isEdit?'Save changes':(andAnother?'Save & add another':'Save head');btn.disabled=false;return;}
   if(isEdit){
@@ -238,6 +242,39 @@ async function deleteHead(id){
   S.heads=S.heads.filter(h=>h.id!==id);render();toast('Deleted');
 }
 
+async function loadValve(zid){
+  const{data,error}=await sb.from('heads').select('*').eq('zone_id',zid).eq('item_type','valve').order('created_at');
+  if(error){toast('Error: '+error.message);return;}
+  S.valve=data&&data.length>0?data[0]:null;
+}
+
+async function saveValve(){
+  const valve_brand=document.getElementById('vb').value.trim();
+  const valve_size=document.getElementById('vs').value.trim();
+  const valve_type=document.getElementById('vt').value;
+  const notes=document.getElementById('vno').value.trim();
+  const lat=document.getElementById('vlat').value.trim();
+  const lng=document.getElementById('vlng').value.trim();
+  const btn=document.getElementById('valve-save');
+  btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+  const isEdit=S.valve&&S.valve.id;
+  let res;
+  if(isEdit){
+    res=await sb.from('heads').update({valve_brand,valve_size,valve_type,notes,lat:lat||null,lng:lng||null}).eq('id',S.valve.id).select().single();
+  }else{
+    res=await sb.from('heads').insert({item_type:'valve',valve_brand,valve_size,valve_type,notes,lat:lat||null,lng:lng||null,zone_id:S.zone.id,user_id:S.user.id}).select().single();
+  }
+  if(res.error){toast('Error: '+res.error.message);btn.textContent='Save valve';btn.disabled=false;return;}
+  S.valve=res.data;toast('Valve saved!');setView('heads');
+}
+
+async function deleteValve(){
+  if(!S.valve||!S.valve.id)return;
+  if(!confirm('Delete this valve?'))return;
+  await sb.from('heads').delete().eq('id',S.valve.id);
+  S.valve=null;render();toast('Valve deleted');
+}
+
 async function captureGPS(){
   if(!navigator.geolocation){toast('GPS not available');return;}
   const btn=document.getElementById('gps-btn');
@@ -246,6 +283,22 @@ async function captureGPS(){
     pos=>{
       document.getElementById('hlat').value=pos.coords.latitude.toFixed(7);
       document.getElementById('hlng').value=pos.coords.longitude.toFixed(7);
+      toast('GPS captured! ±'+Math.round(pos.coords.accuracy)+'m');
+      if(btn){btn.textContent='Update location';btn.disabled=false;}
+    },
+    ()=>{toast('Could not get location — allow location access and try again');if(btn){btn.textContent='Capture my location';btn.disabled=false;}},
+    {enableHighAccuracy:true,timeout:15000}
+  );
+}
+
+async function captureValveGPS(){
+  if(!navigator.geolocation){toast('GPS not available');return;}
+  const btn=document.getElementById('gps-btn');
+  if(btn){btn.innerHTML='<span class="spin"></span> Getting location...';btn.disabled=true;}
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      document.getElementById('vlat').value=pos.coords.latitude.toFixed(7);
+      document.getElementById('vlng').value=pos.coords.longitude.toFixed(7);
       toast('GPS captured! ±'+Math.round(pos.coords.accuracy)+'m');
       if(btn){btn.textContent='Update location';btn.disabled=false;}
     },
@@ -349,7 +402,7 @@ function rZones(){
   let list=S.zones.length===0
     ?`<div class="empty"><div class="empty-icon">💧</div>No zones yet.<br>Add your first zone below.</div>`
     :S.zones.map(z=>`<div class="list-item" onclick="S.zone=S.zones.find(x=>x.id==='${z.id}');loadHeads('${z.id}')">
-      <div><div class="list-item-name">${esc(z.name)}</div><div class="list-item-meta">${esc(z.area||'No area set')}</div></div>
+      <div><div class="list-item-name">${esc(z.name)}${z.controller_zone?' <span style="font-size:11px;font-weight:400;color:var(--g400);">· Controller #'+esc(z.controller_zone)+'</span>':''}</div><div class="list-item-meta">${esc(z.area||'No area set')}</div></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteZone('${z.id}')">Delete</button>
         <span class="chevron">›</span>
@@ -373,6 +426,7 @@ function rAddZone(){
       <div class="card-title">Zone details</div>
       <div class="field"><label>Zone name *</label><input type="text" id="zn" placeholder="e.g. Front lawn, Back beds"></div>
       <div class="field"><label>Area / description</label><input type="text" id="za" placeholder="e.g. East side flower beds"></div>
+      <div class="field"><label>Controller zone number</label><input type="text" id="zctrl" placeholder="e.g. 3" inputmode="numeric"></div>
       <div class="field"><label>Notes</label><textarea id="zno" placeholder="Pressure issues, recent repairs..."></textarea></div>
       <button class="btn btn-green btn-full" id="zone-save" onclick="saveZone()" style="margin-top:4px;">Save zone</button>
     </div></div>`;
@@ -380,6 +434,61 @@ function rAddZone(){
 
 function rHeads(){
   const z=S.zone;
+  const tab=S.zoneTab||'heads';
+
+  // TAB BAR
+  const tabBar=`<div style="display:flex;gap:0;margin-bottom:16px;border:1.5px solid var(--g200);border-radius:var(--rs);overflow:hidden;">
+    <button onclick="S.zoneTab='heads';render()" style="flex:1;padding:10px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:${tab==='heads'?'var(--green)':'#fff'};color:${tab==='heads'?'#fff':'var(--g600)'};">Heads (${S.heads.length})</button>
+    <button onclick="S.zoneTab='valve';render()" style="flex:1;padding:10px;font-size:14px;font-weight:500;border:none;border-left:1.5px solid var(--g200);cursor:pointer;background:${tab==='valve'?'var(--green)':'#fff'};color:${tab==='valve'?'#fff':'var(--g600)'};">Valve ${S.valve?'✓':''}</button>
+  </div>`;
+
+  if(tab==='valve'){
+    const v=S.valve||{};
+    const gps=v.lat&&v.lng;
+    const VALVE_TYPES=['Solenoid','Ball valve','Gate valve','Pressure regulating','Other'];
+    const valveForm=`
+      <div class="card">
+        <div class="card-title">Valve details</div>
+        <div class="field"><label>Brand</label><input type="text" id="vb" value="${esc(v.valve_brand||'')}" placeholder="e.g. Rain Bird, Hunter"></div>
+        <div class="row2">
+          <div class="field"><label>Size (inches)</label><input type="text" id="vs" value="${esc(v.valve_size||'')}" placeholder='e.g. 1"'></div>
+          <div class="field"><label>Valve type</label>
+            <select id="vt">${VALVE_TYPES.map(t=>`<option${v.valve_type===t?' selected':''}>${t}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="field"><label>Notes</label><textarea id="vno" placeholder="Leaking, needs replacement...">${esc(v.notes||'')}</textarea></div>
+      </div>
+      <div class="card">
+        <div class="card-title">GPS location</div>
+        <div class="${gps?'gps-box':'gps-box no-gps'}">
+          <div style="font-size:13px;font-weight:500;color:${gps?'var(--green)':'var(--g600)'}">
+            ${gps?'✓ Location saved':'No GPS tag yet'}
+          </div>
+          ${gps
+            ?`<div class="gps-coords">${v.lat}, ${v.lng}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-green" id="gps-btn" onclick="captureValveGPS()">Update location</button>
+                <a class="map-link" href="https://maps.apple.com/?q=${v.lat},${v.lng}" target="_blank">Apple Maps</a>
+                <a class="map-link" href="https://maps.google.com/?q=${v.lat},${v.lng}" target="_blank">Google Maps</a>
+              </div>`
+            :`<div class="gps-coords no-gps">Stand over the valve box and tap below</div>
+              <button class="btn btn-green btn-full" id="gps-btn" onclick="captureValveGPS()">Capture my location</button>`
+          }
+        </div>
+        <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:500;color:var(--g600);">Or enter manually</label>
+        <div class="row2">
+          <div class="field"><label>Latitude</label><input type="text" id="vlat" value="${esc(v.lat||'')}" placeholder="33.7490" inputmode="decimal"></div>
+          <div class="field"><label>Longitude</label><input type="text" id="vlng" value="${esc(v.lng||'')}" placeholder="-84.3880" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:40px;">
+        <button class="btn btn-green btn-full" id="valve-save" onclick="saveValve()">${S.valve?'Update valve':'Save valve'}</button>
+        ${S.valve?`<button class="btn btn-danger btn-full" onclick="deleteValve()">Delete valve</button>`:''}
+      </div>`;
+    return rTopbar(esc(z.name),esc(S.property?.name||''),false)+rBread()+`<div class="main">${tabBar}${valveForm}</div>`;
+  }
+
+  // HEADS TAB
   let list=S.heads.length===0
     ?`<div class="empty"><div class="empty-icon">🌀</div>No heads yet.<br>Add your first head below.</div>`
     :S.heads.map((h,hi)=>{
@@ -403,10 +512,11 @@ function rHeads(){
       </div>`;
     }).join('');
   return rTopbar(esc(z.name),esc(S.property?.name||''),false)+rBread()+`<div class="main">
+    ${tabBar}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <span style="font-size:16px;font-weight:600;">Heads (${S.heads.length})</span>
       <button class="btn btn-sm btn-green" onclick="S.head=null;setView('head')">+ Add head</button>
-    </div>${list}</div>`;
+    </div>${list}<div style="height:40px;"></div></div>`;
 }
 
 function rHead(){
@@ -553,16 +663,20 @@ function rSummary(){
 async function exportPropertyCSV(pid){
   toast('Preparing CSV...');
   const{data:zones}=await sb.from('zones').select('*').eq('property_id',pid).order('created_at');
-  const{data:heads}=await sb.from('heads').select('*').in('zone_id',(zones||[]).map(z=>z.id)).order('created_at');
+  const{data:heads}=await sb.from('heads').select('*').in('zone_id',(zones||[]).map(z=>z.id)).order('item_type').order('created_at');
   const prop=S.properties.find(p=>p.id===pid)||{};
-  const rows=[['Property','Address','Zone','Area','Head #','Brand','Type','Arc','Radius (ft)','Grass','Latitude','Longitude','Notes']];
+  const rows=[['Property','Address','Zone','Controller #','Area','Item','#','Brand','Type','Arc/Size','Radius/Size','Grass','Latitude','Longitude','Notes']];
   (zones||[]).forEach(z=>{
-    const zh=(heads||[]).filter(h=>h.zone_id===z.id);
-    if(zh.length===0){
-      rows.push([prop.name,prop.address||'',z.name,z.area||'','','','','','','','','','']);
+    const zh=(heads||[]).filter(h=>h.zone_id===z.id&&h.item_type!=='valve');
+    const valve=(heads||[]).find(h=>h.zone_id===z.id&&h.item_type==='valve');
+    if(valve){
+      rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','Valve','',valve.valve_brand||'',valve.valve_type||'','',valve.valve_size||'','',valve.lat||'',valve.lng||'',valve.notes||'']);
+    }
+    if(zh.length===0&&!valve){
+      rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','','','','','','','','','','']);
     } else {
       zh.forEach((h,hi)=>{
-        rows.push([prop.name,prop.address||'',z.name,z.area||'',hi+1,h.brand,h.type,h.arc,h.radius||'',h.grass||'',h.lat||'',h.lng||'',h.notes||'']);
+        rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','Head',hi+1,h.brand,h.type,h.arc,h.radius||'',h.grass||'',h.lat||'',h.lng||'',h.notes||'']);
       });
     }
   });
