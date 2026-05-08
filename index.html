@@ -4,711 +4,1022 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Sprinkler Map</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root {
-  --green:#1a6b3c;--green-light:#e8f5ee;--green-mid:#4caf7d;
-  --amber:#b45309;--amber-light:#fef3c7;
-  --red:#dc2626;--red-light:#fee2e2;
-  --blue:#1d4ed8;--blue-light:#dbeafe;
-  --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
-  --g400:#9ca3af;--g600:#4b5563;--g700:#374151;--g900:#111827;
-  --r:12px;--rs:8px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
-}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:var(--font);background:var(--g100);color:var(--g900);min-height:100vh;}
-.topbar{background:var(--green);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.topbar-title{font-size:16px;font-weight:600;letter-spacing:-0.3px;}
-.topbar-sub{font-size:11px;opacity:0.75;margin-top:1px;font-family:var(--mono);}
-.topbar-btn{background:rgba(255,255,255,0.18);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:13px;font-family:var(--font);cursor:pointer;}
-.breadcrumb{background:#fff;border-bottom:1px solid var(--g200);padding:10px 16px;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--g400);overflow-x:auto;white-space:nowrap;scrollbar-width:none;}
-.breadcrumb::-webkit-scrollbar{display:none;}
-.bc-link{color:var(--green);cursor:pointer;font-weight:500;}
-.bc-sep{color:var(--g300);}
-.main{padding:16px;max-width:520px;margin:0 auto;}
-.card{background:#fff;border-radius:var(--r);border:1px solid var(--g200);padding:16px;margin-bottom:12px;}
-.card-title{font-size:13px;font-weight:600;color:var(--g400);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;}
-.field{margin-bottom:12px;}
-.field:last-child{margin-bottom:0;}
-label{display:block;font-size:12px;font-weight:500;color:var(--g600);margin-bottom:5px;}
-input[type=text],input[type=email],input[type=password],select,textarea{width:100%;padding:11px 13px;border:1.5px solid var(--g200);border-radius:var(--rs);font-size:15px;font-family:var(--font);color:var(--g900);background:var(--g50);outline:none;transition:border-color 0.15s;}
-input:focus,select:focus,textarea:focus{border-color:var(--green);background:#fff;}
-textarea{resize:vertical;min-height:72px;line-height:1.5;}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:var(--rs);border:1.5px solid var(--g200);background:#fff;color:var(--g700);font-size:14px;font-family:var(--font);font-weight:500;cursor:pointer;transition:all 0.12s;}
-.btn:active{transform:scale(0.97);}
-.btn-green{background:var(--green);border-color:var(--green);color:#fff;}
-.btn-green:active{background:#145a32;}
-.btn-outline-green{border-color:var(--green);color:var(--green);}
-.btn-sm{padding:7px 12px;font-size:13px;}
+:root{
+  --green:#1a6b3c;--green-d:#145530;--green-l:#e6f4ed;--green-m:#4caf7d;
+  --amber:#b45309;--amber-l:#fef3c7;
+  --red:#dc2626;--red-l:#fee2e2;
+  --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
+  --g400:#9ca3af;--g500:#6b7280;--g600:#4b5563;--g700:#374151;--g900:#111827;
+  --r:12px;--rs:8px;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
+}
+html,body{height:100%;background:#f0f4f1;font-family:var(--font);color:var(--g900);}
+#app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;}
+
+/* ── NAV ── */
+.topbar{background:#fff;border-bottom:1px solid var(--g200);padding:0 16px;height:56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+.topbar-title{font-size:17px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.back-btn{background:none;border:none;color:var(--green);font:500 15px var(--font);cursor:pointer;padding:8px 0;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.back-btn svg{flex-shrink:0;}
+.icon-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:8px;color:var(--g600);display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.icon-btn:active{background:var(--g100);}
+
+/* ── CONTENT ── */
+.page{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;}
+
+/* ── CARDS ── */
+.card{background:#fff;border-radius:var(--r);border:1px solid var(--g200);overflow:hidden;}
+.card-header{padding:14px 16px 10px;border-bottom:1px solid var(--g100);}
+.card-title{font-size:13px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;}
+.card-body{padding:4px 0;}
+.row{display:flex;align-items:center;padding:11px 16px;gap:12px;border-bottom:1px solid var(--g100);cursor:pointer;transition:background .12s;}
+.row:last-child{border-bottom:none;}
+.row:active{background:var(--g50);}
+.row-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.row-icon.green{background:var(--green-l);color:var(--green);}
+.row-icon.blue{background:#dbeafe;color:#1d4ed8;}
+.row-icon.amber{background:var(--amber-l);color:var(--amber);}
+.row-body{flex:1;min-width:0;}
+.row-name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row-sub{font-size:12px;color:var(--g500);margin-top:1px;}
+.row-arrow{color:var(--g300);flex-shrink:0;}
+.empty{text-align:center;padding:40px 16px;color:var(--g400);}
+.empty-icon{font-size:36px;margin-bottom:8px;}
+.empty-title{font-size:16px;font-weight:600;color:var(--g600);margin-bottom:4px;}
+.empty-sub{font-size:13px;line-height:1.5;}
+
+/* ── FORMS ── */
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:13px;font-weight:600;color:var(--g600);}
+.form-input{border:1.5px solid var(--g200);border-radius:var(--rs);padding:10px 12px;font:15px var(--font);color:var(--g900);background:#fff;outline:none;width:100%;transition:border-color .15s;}
+.form-input:focus{border-color:var(--green-m);}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.form-hint{font-size:12px;color:var(--g400);}
+.form-section{display:flex;flex-direction:column;gap:14px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── BUTTONS ── */
+.btn{border:none;border-radius:var(--rs);padding:12px 18px;font:600 15px var(--font);cursor:pointer;transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:active{opacity:.85;transform:scale(.98);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green-outline{background:var(--green-l);color:var(--green);border:1.5px solid var(--green-m);}
+.btn-gray{background:var(--g100);color:var(--g700);}
+.btn-red{background:var(--red-l);color:var(--red);}
 .btn-full{width:100%;}
-.btn-danger{border-color:var(--red);color:var(--red);}
-.list-item{background:#fff;border:1px solid var(--g200);border-radius:var(--rs);padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
-.list-item:active{background:var(--green-light);}
-.list-item-name{font-size:14px;font-weight:600;}
-.list-item-meta{font-size:12px;color:var(--g400);margin-top:2px;}
-.chevron{color:var(--g300);font-size:18px;}
-.head-item{background:var(--g50);border:1px solid var(--g200);border-radius:var(--rs);padding:13px;margin-bottom:8px;}
-.head-item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
-.head-num{font-size:11px;font-family:var(--mono);color:var(--g400);}
-.head-name{font-size:14px;font-weight:600;}
-.head-meta{font-size:12px;color:var(--g400);margin-top:2px;}
-.head-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
-.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500;}
-.badge-gps{background:var(--green-light);color:var(--green);}
-.badge-nogps{background:var(--g100);color:var(--g400);border:1px solid var(--g200);}
-.badge-rotor{background:var(--blue-light);color:var(--blue);}
-.badge-mist{background:var(--amber-light);color:var(--amber);}
-.badge-drip{background:#f0fdf4;color:#166534;}
-.gps-box{background:var(--green-light);border:1.5px solid #a7d7bb;border-radius:var(--rs);padding:13px;margin-bottom:12px;}
-.gps-box.no-gps{background:var(--g50);border-color:var(--g200);}
-.gps-coords{font-family:var(--mono);font-size:12px;color:var(--green);margin:6px 0 10px;}
-.gps-coords.no-gps{color:var(--g400);}
-.map-link{display:inline-flex;align-items:center;gap:4px;color:var(--blue);font-size:12px;text-decoration:none;padding:5px 10px;border:1px solid #bfdbfe;border-radius:20px;background:var(--blue-light);}
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.auth-card{background:#fff;border-radius:var(--r);border:1px solid var(--g200);padding:28px 24px;width:100%;max-width:380px;}
-.auth-logo{font-size:22px;font-weight:600;color:var(--green);margin-bottom:4px;}
-.auth-sub{font-size:13px;color:var(--g400);margin-bottom:24px;}
-.auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--g600);}
-.auth-switch span{color:var(--green);cursor:pointer;font-weight:500;}
-.auth-error{font-size:13px;padding:10px 12px;border-radius:var(--rs);margin-bottom:12px;}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--g900);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-family:var(--font);z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:nowrap;}
-.toast.show{opacity:1;}
+.btn-sm{padding:8px 14px;font-size:13px;}
+.btn-stack{display:flex;flex-direction:column;gap:8px;}
+
+/* ── SUMMARY ── */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.stat-card{background:#fff;border-radius:var(--rs);border:1px solid var(--g200);padding:12px;text-align:center;}
+.stat-num{font-size:26px;font-weight:700;color:var(--green);font-family:var(--mono);}
+.stat-label{font-size:11px;color:var(--g500);margin-top:2px;font-weight:500;}
+.export-box{background:var(--g50);border:1px solid var(--g200);border-radius:var(--rs);padding:12px;font:13px/1.7 var(--mono);white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto;}
+
+/* ── TREE ── */
+.tree-panel{position:fixed;top:0;right:0;bottom:0;width:min(320px,88vw);background:#fff;border-left:1px solid var(--g200);z-index:200;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1);}
+.tree-panel.open{transform:translateX(0);}
+.tree-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199;opacity:0;pointer-events:none;transition:opacity .25s;}
+.tree-overlay.open{opacity:1;pointer-events:auto;}
+.tree-header{padding:16px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:10px;}
+.tree-title{font-size:16px;font-weight:700;flex:1;}
+.tree-body{flex:1;overflow-y:auto;padding:8px 0;}
+.tree-controls{padding:8px 16px;display:flex;gap:8px;border-bottom:1px solid var(--g100);}
+.tree-ctrl-btn{background:var(--g100);border:none;border-radius:6px;padding:5px 10px;font:500 12px var(--font);color:var(--g600);cursor:pointer;}
+.tree-ctrl-btn:active{background:var(--g200);}
+.tree-prop{padding:8px 16px 4px;}
+.tree-prop-name{font-size:14px;font-weight:700;color:var(--g900);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.tree-prop-name .toggle{color:var(--g400);font-size:12px;transition:transform .15s;display:inline-block;}
+.tree-prop-name .toggle.open{transform:rotate(90deg);}
+.tree-zone-list{padding:0 0 4px 12px;}
+.tree-zone{padding:4px 8px;}
+.tree-zone-name{font-size:13px;font-weight:600;color:var(--g600);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.tree-zone-name .toggle{color:var(--g300);font-size:11px;transition:transform .15s;display:inline-block;}
+.tree-zone-name .toggle.open{transform:rotate(90deg);}
+.tree-head-list{padding:2px 0 2px 14px;}
+.tree-head{font-size:12px;color:var(--g500);padding:2px 6px;display:flex;align-items:center;gap:6px;}
+.tree-head::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green-m);flex-shrink:0;}
+.tree-badge{margin-left:auto;background:var(--g100);color:var(--g500);border-radius:10px;padding:1px 6px;font-size:11px;font-weight:600;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--g900);color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;font-weight:500;z-index:999;transition:transform .25s cubic-bezier(.4,0,.2,1);white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── MISC ── */
+.divider{height:1px;background:var(--g100);margin:4px 0;}
+.tag{display:inline-flex;align-items:center;background:var(--green-l);color:var(--green);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600;}
+.tag.amber{background:var(--amber-l);color:var(--amber);}
+.head-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;padding:12px 16px;}
+.detail-item{}
+.detail-key{font-size:11px;color:var(--g400);font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.detail-val{font-size:14px;font-weight:500;margin-top:1px;}
+.spinner{width:32px;height:32px;border:3px solid var(--g200);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:40px auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;}
-.spinner-wrap{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--g400);font-size:14px;gap:10px;}
-hr{border:none;border-top:1px solid var(--g200);margin:14px 0;}
-.empty{text-align:center;padding:32px 16px;color:var(--g400);font-size:14px;}
-.empty-icon{font-size:32px;margin-bottom:8px;}
-.prog-bar{height:6px;background:var(--g200);border-radius:20px;overflow:hidden;margin:6px 0 4px;}
-.prog-fill{height:100%;background:var(--green-mid);border-radius:20px;}
-.export-box{background:var(--g900);color:#86efac;font-family:var(--mono);font-size:11px;border-radius:var(--rs);padding:14px;white-space:pre-wrap;max-height:260px;overflow-y:auto;line-height:1.6;}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.stat{background:var(--g50);border:1px solid var(--g200);border-radius:var(--rs);padding:12px;text-align:center;}
-.stat-val{font-size:28px;font-weight:600;line-height:1;}
-.stat-lbl{font-size:11px;color:var(--g400);margin-top:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.5px;}
-.back-btn{display:flex;align-items:center;gap:4px;color:var(--green);font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;padding:4px 0;font-family:var(--font);margin-bottom:16px;}
+.loading-page{display:flex;align-items:center;justify-content:center;flex:1;}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="app"></div>
+
+<!-- TREE PANEL -->
+<div class="tree-overlay" id="treeOverlay" onclick="closeTree()"></div>
+<div class="tree-panel" id="treePanel">
+  <div class="tree-header">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 17H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-3M9 17h6"/></svg>
+    <span class="tree-title">System Hierarchy</span>
+    <button class="icon-btn" onclick="closeTree()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="tree-controls">
+    <button class="tree-ctrl-btn" onclick="treeExpandAll()">Expand all</button>
+    <button class="tree-ctrl-btn" onclick="treeCollapseAll()">Zones only</button>
+  </div>
+  <div class="tree-body" id="treeBody"></div>
+</div>
+
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
+
 <script>
-const SURL='https://ovkywaqalotlzwqletsg.supabase.co';
-const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92a3l3YXFhbG90bHp3cWxldHNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NjE3NjMsImV4cCI6MjA5MzEzNzc2M30.8z-wLHE1QJI6gz11WIBqRYQAC698NSs1cpbSWnmIvk0';
-const sb=supabase.createClient(SURL,SKEY);
+// ═══════════════════════════════════════════════════════════
+// CONFIG — fill in your Supabase URL and anon key
+// ═══════════════════════════════════════════════════════════
+const SUPA_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPA_KEY = 'YOUR_ANON_KEY';
 
-const HEAD_TYPES=['Rotor','Fixed mist','MP rotator','Drip emitter','Bubbler','Other'];
-const BRANDS=['Rain Bird','Hunter','Toro','Orbit','K-Rain','Weathermatic','Other'];
-const ARCS=['Full (360°)','Half (180°)','Quarter (90°)','Custom'];
-const GRASSES=['Bermuda','Fescue'];
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-let S={view:'loading',user:null,authMode:'login',property:null,zone:null,head:null,valve:null,zoneTab:'heads',editingZone:null,properties:[],zones:[],heads:[]};
-
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function setView(v){S.view=v;render();window.scrollTo(0,0);}
-
-// AUTH
-async function initAuth(){
-  const{data}=await sb.auth.getSession();
-  if(data.session){S.user=data.session.user;S.view='properties';}
-  else{S.view='auth';}
-  render();
-  sb.auth.onAuthStateChange((event,session)=>{
-    if(session){S.user=session.user;if(S.view==='auth'){S.view='properties';loadProperties();}}
-    else{S.user=null;S.view='auth';render();}
-  });
-}
-
-async function handleAuth(e){
-  e.preventDefault();
-  const email=document.getElementById('ae').value.trim();
-  const pw=document.getElementById('ap').value;
-  const err=document.getElementById('auth-err');
-  err.style.display='none';
-  const btn=document.getElementById('auth-btn');
-  btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const isLogin=S.authMode==='login';
-  const res=isLogin?await sb.auth.signInWithPassword({email,password:pw}):await sb.auth.signUp({email,password:pw});
-  if(res.error){
-    err.textContent=res.error.message;err.style.cssText='display:block;background:var(--red-light);color:var(--red);';
-    btn.textContent=isLogin?'Sign in':'Create account';btn.disabled=false;
-  }else if(!isLogin&&!res.data.session){
-    err.textContent='Check your email to confirm your account, then sign in.';
-    err.style.cssText='display:block;background:var(--green-light);color:var(--green);';
-    btn.textContent='Create account';btn.disabled=false;
-  }
-}
-
-// PROPERTIES
-async function loadProperties(){
-  setView('loading');
-  const{data,error}=await sb.from('properties').select('*').order('created_at');
-  if(error){toast('Error: '+error.message);setView('properties');return;}
-  S.properties=data||[];setView('properties');
-}
-
-async function saveProperty(){
-  const name=document.getElementById('pn').value.trim();
-  const addr=document.getElementById('pa').value.trim();
-  if(!name){toast('Name is required');return;}
-  const btn=document.getElementById('prop-save');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const{data,error}=await sb.from('properties').insert({name,address:addr,user_id:S.user.id}).select().single();
-  if(error){toast('Error: '+error.message);btn.textContent='Save property';btn.disabled=false;return;}
-  S.properties.push(data);toast('Property saved!');
-  S.property=data;await loadZones(data.id);
-}
-
-async function deleteProperty(id){
-  if(!confirm('Delete this property and all its data?'))return;
-  await sb.from('properties').delete().eq('id',id);
-  S.properties=S.properties.filter(p=>p.id!==id);render();toast('Deleted');
-}
-
-// ZONES
-async function loadZones(pid){
-  setView('loading');
-  const{data,error}=await sb.from('zones').select('*').eq('property_id',pid).order('created_at');
-  if(error){toast('Error: '+error.message);return;}
-  S.zones=data||[];setView('zones');
-}
-
-async function saveZone(){
-  const name=document.getElementById('zn').value.trim();
-  const area=document.getElementById('za').value.trim();
-  const controller_zone=document.getElementById('zctrl').value.trim();
-  const notes=document.getElementById('zno').value.trim();
-  if(!name){toast('Name is required');return;}
-  const btn=document.getElementById('zone-save');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const{data,error}=await sb.from('zones').insert({name,area,controller_zone,notes,property_id:S.property.id,user_id:S.user.id}).select().single();
-  if(error){toast('Error: '+error.message);btn.textContent='Save zone';btn.disabled=false;return;}
-  S.zones.push(data);toast('Zone saved!');S.zone=data;await loadHeads(data.id);
-}
-
-async function updateZone(){
-  const name=document.getElementById('zn').value.trim();
-  const area=document.getElementById('za').value.trim();
-  const controller_zone=document.getElementById('zctrl').value.trim();
-  const notes=document.getElementById('zno').value.trim();
-  if(!name){toast('Name is required');return;}
-  const btn=document.getElementById('zone-save');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const{data,error}=await sb.from('zones').update({name,area,controller_zone,notes}).eq('id',S.editingZone.id).select().single();
-  if(error){toast('Error: '+error.message);btn.textContent='Save changes';btn.disabled=false;return;}
-  S.zones=S.zones.map(z=>z.id===data.id?data:z);
-  S.editingZone=null;
-  toast('Zone updated!');setView('zones');
-}
-
-async function deleteZone(id){
-  if(!confirm('Delete this zone and all its heads?'))return;
-  await sb.from('zones').delete().eq('id',id);
-  S.zones=S.zones.filter(z=>z.id!==id);render();toast('Deleted');
-}
-
-// HEADS
-async function loadHeads(zid){
-  setView('loading');
-  const{data,error}=await sb.from('heads').select('*').eq('zone_id',zid).eq('item_type','head').order('created_at');
-  if(error){toast('Error: '+error.message);return;}
-  S.heads=data||[];
-  await loadValve(zid);
-  S.zoneTab=S.zoneTab||'heads';
-  setView('heads');
-}
-
-async function saveHead(andAnother){
-  const brand=document.getElementById('hb').value;
-  const type=document.getElementById('ht').value;
-  const arc=document.getElementById('ha').value;
-  const radius=document.getElementById('hr').value.trim();
-  const grass=document.getElementById('hgrass').value;
-  const notes=document.getElementById('hno').value.trim();
-  const lat=document.getElementById('hlat').value.trim();
-  const lng=document.getElementById('hlng').value.trim();
-  const btnId=andAnother?'head-save-another':'head-save';
-  const btn=document.getElementById(btnId);
-  btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const isEdit=!!S.head;
-  let res;
-  if(isEdit){
-    res=await sb.from('heads').update({brand,type,arc,radius,grass,notes,lat:lat||null,lng:lng||null}).eq('id',S.head.id).select().single();
-  }else{
-    res=await sb.from('heads').insert({item_type:'head',brand,type,arc,radius,grass,notes,lat:lat||null,lng:lng||null,zone_id:S.zone.id,user_id:S.user.id}).select().single();
-  }
-  if(res.error){toast('Error: '+res.error.message);btn.textContent=isEdit?'Save changes':(andAnother?'Save & add another':'Save head');btn.disabled=false;return;}
-  if(isEdit){
-    S.heads=S.heads.map(h=>h.id===res.data.id?res.data:h);
-    toast('Head updated!');S.head=null;setView('heads');
-  }else{
-    S.heads.push(res.data);toast('Head saved!');
-    if(andAnother){S.head=null;setView('head');}
-    else{S.head=null;setView('heads');}
-  }
-}
-
-async function deleteHead(id){
-  if(!confirm('Delete this head?'))return;
-  await sb.from('heads').delete().eq('id',id);
-  S.heads=S.heads.filter(h=>h.id!==id);render();toast('Deleted');
-}
-
-async function loadValve(zid){
-  const{data,error}=await sb.from('heads').select('*').eq('zone_id',zid).eq('item_type','valve').order('created_at');
-  if(error){toast('Error: '+error.message);return;}
-  S.valve=data&&data.length>0?data[0]:null;
-}
-
-async function saveValve(){
-  const valve_brand=document.getElementById('vb').value.trim();
-  const valve_size=document.getElementById('vs').value.trim();
-  const valve_type=document.getElementById('vt').value;
-  const notes=document.getElementById('vno').value.trim();
-  const lat=document.getElementById('vlat').value.trim();
-  const lng=document.getElementById('vlng').value.trim();
-  const btn=document.getElementById('valve-save');
-  btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const isEdit=S.valve&&S.valve.id;
-  let res;
-  if(isEdit){
-    res=await sb.from('heads').update({valve_brand,valve_size,valve_type,notes,lat:lat||null,lng:lng||null}).eq('id',S.valve.id).select().single();
-  }else{
-    res=await sb.from('heads').insert({item_type:'valve',valve_brand,valve_size,valve_type,notes,lat:lat||null,lng:lng||null,zone_id:S.zone.id,user_id:S.user.id}).select().single();
-  }
-  if(res.error){toast('Error: '+res.error.message);btn.textContent='Save valve';btn.disabled=false;return;}
-  S.valve=res.data;toast('Valve saved!');setView('heads');
-}
-
-async function deleteValve(){
-  if(!S.valve||!S.valve.id)return;
-  if(!confirm('Delete this valve?'))return;
-  await sb.from('heads').delete().eq('id',S.valve.id);
-  S.valve=null;render();toast('Valve deleted');
-}
-
-async function captureGPS(){
-  if(!navigator.geolocation){toast('GPS not available');return;}
-  const btn=document.getElementById('gps-btn');
-  if(btn){btn.innerHTML='<span class="spin"></span> Getting location...';btn.disabled=true;}
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      document.getElementById('hlat').value=pos.coords.latitude.toFixed(7);
-      document.getElementById('hlng').value=pos.coords.longitude.toFixed(7);
-      toast('GPS captured! ±'+Math.round(pos.coords.accuracy)+'m');
-      if(btn){btn.textContent='Update location';btn.disabled=false;}
-    },
-    ()=>{toast('Could not get location — allow location access and try again');if(btn){btn.textContent='Capture my location';btn.disabled=false;}},
-    {enableHighAccuracy:true,timeout:15000}
-  );
-}
-
-async function captureValveGPS(){
-  if(!navigator.geolocation){toast('GPS not available');return;}
-  const btn=document.getElementById('gps-btn');
-  if(btn){btn.innerHTML='<span class="spin"></span> Getting location...';btn.disabled=true;}
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      document.getElementById('vlat').value=pos.coords.latitude.toFixed(7);
-      document.getElementById('vlng').value=pos.coords.longitude.toFixed(7);
-      toast('GPS captured! ±'+Math.round(pos.coords.accuracy)+'m');
-      if(btn){btn.textContent='Update location';btn.disabled=false;}
-    },
-    ()=>{toast('Could not get location — allow location access and try again');if(btn){btn.textContent='Capture my location';btn.disabled=false;}},
-    {enableHighAccuracy:true,timeout:15000}
-  );
-}
-
-// RENDER
-function render(){
-  const root=document.getElementById('root');
-  const v=S.view;
-  if(v==='loading') root.innerHTML=rLoading();
-  else if(v==='auth') {root.innerHTML=rAuth();document.getElementById('auth-form').addEventListener('submit',handleAuth);}
-  else if(v==='properties') root.innerHTML=rProperties();
-  else if(v==='add-property') root.innerHTML=rAddProperty();
-  else if(v==='zones') root.innerHTML=rZones();
-  else if(v==='add-zone') root.innerHTML=rAddZone();
-  else if(v==='heads') root.innerHTML=rHeads();
-  else if(v==='head') root.innerHTML=rHead();
-  else if(v==='summary') {root.innerHTML=rSummary();}
-}
-
-function rLoading(){return`<div class="spinner-wrap"><span class="spin" style="border-color:var(--g200);border-top-color:var(--green);width:20px;height:20px;border-width:3px;"></span>Loading...</div>`;}
-
-function rTopbar(title,sub,showOut){
-  return`<div class="topbar"><div><div class="topbar-title">${title}</div>${sub?`<div class="topbar-sub">${sub}</div>`:''}</div>${showOut?`<button class="topbar-btn" onclick="sb.auth.signOut()">Sign out</button>`:''}</div>`;
-}
-
-function crumbs(){
-  const c=[{l:'Properties',v:'properties'}];
-  if(S.property)c.push({l:esc(S.property.name),v:'zones'});
-  if(S.zone)c.push({l:esc(S.zone.name),v:'heads'});
-  return c;
-}
-
-function rBread(){
-  const c=crumbs();
-  let h='<div class="breadcrumb">';
-  c.forEach((item,i)=>{
-    if(i>0)h+=`<span class="bc-sep">›</span>`;
-    if(i<c.length-1)h+=`<span class="bc-link" onclick="bcGo('${item.v}')">${item.l}</span>`;
-    else h+=`<span style="color:var(--g700);font-weight:500;">${item.l}</span>`;
-  });
-  return h+'</div>';
-}
-
-window.bcGo=function(v){
-  if(v==='properties'){S.property=null;S.zone=null;S.head=null;setView('properties');}
-  else if(v==='zones'){S.zone=null;S.head=null;S.editingZone=null;setView('zones');}
-  else if(v==='heads'){S.head=null;setView('heads');}
+// ── State ────────────────────────────────────────────────
+const S = {
+  view: 'properties',
+  user: null,
+  properties: [],
+  property: null,
+  zones: [],
+  zone: null,
+  heads: [],
+  head: null,
+  // tree state: zoneId -> bool expanded
+  treeExpanded: {},
+  treeAllOpen: true,
 };
 
-function rAuth(){
-  const isL=S.authMode==='login';
-  return`<div class="auth-wrap"><div class="auth-card">
-    <div class="auth-logo">Sprinkler Map</div>
-    <div class="auth-sub">${isL?'Sign in to your account':'Create a new account'}</div>
-    <div class="auth-error" id="auth-err" style="display:none;border-radius:var(--rs);padding:10px 12px;margin-bottom:12px;font-size:13px;"></div>
-    <form id="auth-form">
-      <div class="field"><label>Email</label><input type="email" id="ae" placeholder="you@example.com" autocomplete="email" required></div>
-      <div class="field"><label>Password</label><input type="password" id="ap" placeholder="••••••••" autocomplete="${isL?'current-password':'new-password'}" required></div>
-      <button type="submit" class="btn btn-green btn-full" id="auth-btn" style="margin-top:4px;">${isL?'Sign in':'Create account'}</button>
-    </form>
-    <div class="auth-switch">${isL?"Don't have an account?":'Already have an account?'} <span onclick="S.authMode=S.authMode==='login'?'signup':'login';render()">${isL?'Sign up':'Sign in'}</span></div>
-  </div></div>`;
+// ── Helpers ──────────────────────────────────────────────
+const app = document.getElementById('app');
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
-function rProperties(){
-  const email=S.user?.email||'';
-  let list=S.properties.length===0
-    ?`<div class="empty"><div class="empty-icon">🏡</div>No properties yet.<br>Add your first property below.</div>`
-    :S.properties.map(p=>`<div class="list-item" onclick="S.property=S.properties.find(x=>x.id==='${p.id}');loadZones('${p.id}')">
-      <div><div class="list-item-name">${esc(p.name)}</div><div class="list-item-meta">${esc(p.address||'No address')}</div></div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn btn-sm btn-outline-green" onclick="event.stopPropagation();exportPropertyCSV('${p.id}')">Export CSV</button>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteProperty('${p.id}')">Delete</button>
-        <span class="chevron">›</span>
-      </div>
-    </div>`).join('');
-  return rTopbar('Sprinkler Map',email,true)+`<div class="main">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span style="font-size:16px;font-weight:600;">My Properties</span>
-      <button class="btn btn-sm btn-green" onclick="setView('add-property')">+ Add property</button>
-    </div>${list}</div>`;
+function openTree() {
+  document.getElementById('treePanel').classList.add('open');
+  document.getElementById('treeOverlay').classList.add('open');
+}
+function closeTree() {
+  document.getElementById('treePanel').classList.remove('open');
+  document.getElementById('treeOverlay').classList.remove('open');
+}
+function treeExpandAll() {
+  S.treeAllOpen = true;
+  Object.keys(S.treeExpanded).forEach(k => S.treeExpanded[k] = true);
+  renderTree();
+}
+function treeCollapseAll() {
+  S.treeAllOpen = false;
+  Object.keys(S.treeExpanded).forEach(k => S.treeExpanded[k] = false);
+  renderTree();
 }
 
-function rAddProperty(){
-  return rTopbar('New Property','',false)+`<div class="main">
-    <button class="back-btn" onclick="setView('properties')">← Back</button>
-    <div class="card">
-      <div class="card-title">Property details</div>
-      <div class="field"><label>Property name *</label><input type="text" id="pn" placeholder="e.g. Main residence"></div>
-      <div class="field"><label>Address</label><input type="text" id="pa" placeholder="e.g. 123 Oak Street"></div>
-      <button class="btn btn-green btn-full" id="prop-save" onclick="saveProperty()" style="margin-top:4px;">Save property</button>
-    </div></div>`;
-}
+async function renderTree() {
+  const body = document.getElementById('treeBody');
+  if (!S.property) { body.innerHTML = '<div class="empty" style="padding:20px;font-size:13px;color:var(--g400);">Select a property first</div>'; return; }
 
-function rZones(){
-  const p=S.property;
-  let list=S.zones.length===0
-    ?`<div class="empty"><div class="empty-icon">💧</div>No zones yet.<br>Add your first zone below.</div>`
-    :S.zones.map(z=>`<div class="list-item" onclick="S.zone=S.zones.find(x=>x.id==='${z.id}');loadHeads('${z.id}')">
-      <div><div class="list-item-name">${esc(z.name)}${z.controller_zone?' <span style="font-size:11px;font-weight:400;color:var(--g400);">· Controller #'+esc(z.controller_zone)+'</span>':''}</div><div class="list-item-meta">${esc(z.area||'No area set')}</div></div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn btn-sm btn-outline-green" onclick="event.stopPropagation();S.editingZone=S.zones.find(x=>x.id==='${z.id}');setView('add-zone')">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteZone('${z.id}')">Delete</button>
-        <span class="chevron">›</span>
-      </div>
-    </div>`).join('');
-  return rTopbar(esc(p.name),'Zones',false)+rBread()+`<div class="main">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span style="font-size:16px;font-weight:600;">Zones (${S.zones.length})</span>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-sm btn-outline-green" onclick="exportPropertyCSV('${p.id}')">Export CSV</button>
-        <button class="btn btn-sm" onclick="setView('summary')">Summary</button>
-        <button class="btn btn-sm btn-green" onclick="setView('add-zone')">+ Add zone</button>
-      </div>
-    </div>${list}</div>`;
-}
+  // fetch all zones + heads for this property
+  const { data: zones } = await sb.from('zones').select('*').eq('property_id', S.property.id).order('created_at');
+  const { data: heads } = await sb.from('heads').select('*').eq('property_id', S.property.id).order('created_at');
 
-function rAddZone(){
-  const isEdit=!!S.editingZone;
-  const z=S.editingZone||{};
-  return rTopbar(isEdit?'Edit Zone':'New Zone',esc(S.property?.name||''),false)+rBread()+`<div class="main">
-    <button class="back-btn" onclick="S.editingZone=null;setView('zones')">← Back</button>
-    <div class="card">
-      <div class="card-title">Zone details</div>
-      <div class="field"><label>Zone name *</label><input type="text" id="zn" value="${esc(z.name||'')}" placeholder="e.g. Front lawn, Back beds"></div>
-      <div class="field"><label>Area / description</label><input type="text" id="za" value="${esc(z.area||'')}" placeholder="e.g. East side flower beds"></div>
-      <div class="field"><label>Controller zone number</label><input type="text" id="zctrl" value="${esc(z.controller_zone||'')}" placeholder="e.g. 3" inputmode="numeric"></div>
-      <div class="field"><label>Notes</label><textarea id="zno" placeholder="Pressure issues, recent repairs...">${esc(z.notes||'')}</textarea></div>
-      <button class="btn btn-green btn-full" id="zone-save" onclick="${isEdit?'updateZone()':'saveZone()'}" style="margin-top:4px;">${isEdit?'Save changes':'Save zone'}</button>
-    </div></div>`;
-}
+  // init expanded state for new zones
+  (zones || []).forEach(z => { if (S.treeExpanded[z.id] === undefined) S.treeExpanded[z.id] = S.treeAllOpen; });
 
-function rHeads(){
-  const z=S.zone;
-  const tab=S.zoneTab||'heads';
+  let html = `<div class="tree-prop">
+    <div class="tree-prop-name">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      ${esc(S.property.name)}
+      <span class="tree-badge">${(zones||[]).length} zones · ${(heads||[]).length} heads</span>
+    </div>
+    <div class="tree-zone-list">`;
 
-  // TAB BAR
-  const tabBar=`<div style="display:flex;gap:0;margin-bottom:16px;border:1.5px solid var(--g200);border-radius:var(--rs);overflow:hidden;">
-    <button onclick="S.zoneTab='heads';render()" style="flex:1;padding:10px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:${tab==='heads'?'var(--green)':'#fff'};color:${tab==='heads'?'#fff':'var(--g600)'};">Heads (${S.heads.length})</button>
-    <button onclick="S.zoneTab='valve';render()" style="flex:1;padding:10px;font-size:14px;font-weight:500;border:none;border-left:1.5px solid var(--g200);cursor:pointer;background:${tab==='valve'?'var(--green)':'#fff'};color:${tab==='valve'?'#fff':'var(--g600)'};">Valve ${S.valve?'✓':''}</button>
-  </div>`;
-
-  if(tab==='valve'){
-    const v=S.valve||{};
-    const gps=v.lat&&v.lng;
-    const VALVE_TYPES=['Solenoid','Ball valve','Gate valve','Pressure regulating','Other'];
-    const valveForm=`
-      <div class="card">
-        <div class="card-title">Valve details</div>
-        <div class="field"><label>Brand</label><input type="text" id="vb" value="${esc(v.valve_brand||'')}" placeholder="e.g. Rain Bird, Hunter"></div>
-        <div class="row2">
-          <div class="field"><label>Size (inches)</label><input type="text" id="vs" value="${esc(v.valve_size||'')}" placeholder='e.g. 1"'></div>
-          <div class="field"><label>Valve type</label>
-            <select id="vt">${VALVE_TYPES.map(t=>`<option${v.valve_type===t?' selected':''}>${t}</option>`).join('')}</select>
-          </div>
-        </div>
-        <div class="field"><label>Notes</label><textarea id="vno" placeholder="Leaking, needs replacement...">${esc(v.notes||'')}</textarea></div>
-      </div>
-      <div class="card">
-        <div class="card-title">GPS location</div>
-        <div class="${gps?'gps-box':'gps-box no-gps'}">
-          <div style="font-size:13px;font-weight:500;color:${gps?'var(--green)':'var(--g600)'}">
-            ${gps?'✓ Location saved':'No GPS tag yet'}
-          </div>
-          ${gps
-            ?`<div class="gps-coords">${v.lat}, ${v.lng}</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-sm btn-green" id="gps-btn" onclick="captureValveGPS()">Update location</button>
-                <a class="map-link" href="https://maps.apple.com/?q=${v.lat},${v.lng}" target="_blank">Apple Maps</a>
-                <a class="map-link" href="https://maps.google.com/?q=${v.lat},${v.lng}" target="_blank">Google Maps</a>
-              </div>`
-            :`<div class="gps-coords no-gps">Stand over the valve box and tap below</div>
-              <button class="btn btn-green btn-full" id="gps-btn" onclick="captureValveGPS()">Capture my location</button>`
-          }
-        </div>
-        <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:500;color:var(--g600);">Or enter manually</label>
-        <div class="row2">
-          <div class="field"><label>Latitude</label><input type="text" id="vlat" value="${esc(v.lat||'')}" placeholder="33.7490" inputmode="decimal"></div>
-          <div class="field"><label>Longitude</label><input type="text" id="vlng" value="${esc(v.lng||'')}" placeholder="-84.3880" inputmode="decimal"></div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:40px;">
-        <button class="btn btn-green btn-full" id="valve-save" onclick="saveValve()">${S.valve?'Update valve':'Save valve'}</button>
-        ${S.valve?`<button class="btn btn-danger btn-full" onclick="deleteValve()">Delete valve</button>`:''}
+  (zones || []).forEach(z => {
+    const zHeads = (heads || []).filter(h => h.zone_id === z.id);
+    const open = S.treeExpanded[z.id];
+    html += `<div class="tree-zone">
+      <div class="tree-zone-name" onclick="toggleTreeZone('${z.id}')">
+        <span class="toggle ${open ? 'open' : ''}">▶</span>
+        ${esc(z.name)}
+        <span class="tree-badge">${zHeads.length} heads</span>
       </div>`;
-    return rTopbar(esc(z.name),esc(S.property?.name||''),false)+rBread()+`<div class="main">${tabBar}${valveForm}</div>`;
-  }
-
-  // HEADS TAB
-  let list=S.heads.length===0
-    ?`<div class="empty"><div class="empty-icon">🌀</div>No heads yet.<br>Add your first head below.</div>`
-    :S.heads.map((h,hi)=>{
-      const gps=h.lat&&h.lng;
-      return`<div class="head-item">
-        <div class="head-item-top">
-          <div>
-            <div class="head-num">HEAD ${hi+1}</div>
-            <div class="head-name">${esc(h.brand)} ${esc(h.type)}</div>
-            <div class="head-meta">${esc(h.arc)}${h.radius?' · '+esc(h.radius)+' ft':''}${h.grass?' · '+esc(h.grass):''}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            ${gps?`<span class="badge badge-gps">✓ GPS</span>`:`<span class="badge badge-nogps">No GPS</span>`}
-            <button class="btn btn-sm btn-danger" onclick="deleteHead('${h.id}')">Remove</button>
-          </div>
-        </div>
-        <div class="head-actions">
-          <button class="btn btn-sm btn-outline-green" onclick="S.head=S.heads.find(x=>x.id==='${h.id}');setView('head')">Edit</button>
-          ${gps?`<a class="map-link" href="https://maps.apple.com/?q=${h.lat},${h.lng}" target="_blank">Map</a>`:''}
-        </div>
-      </div>`;
-    }).join('');
-  return rTopbar(esc(z.name),esc(S.property?.name||''),false)+rBread()+`<div class="main">
-    ${tabBar}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span style="font-size:16px;font-weight:600;">Heads (${S.heads.length})</span>
-      <button class="btn btn-sm btn-green" onclick="S.head=null;setView('head')">+ Add head</button>
-    </div>${list}<div style="height:40px;"></div></div>`;
-}
-
-function rHead(){
-  const h=S.head||{};
-  const isEdit=!!S.head;
-  const gps=h.lat&&h.lng;
-  return rTopbar(isEdit?'Edit Head':'New Head',esc(S.zone?.name||''),false)+rBread()+`<div class="main">
-    <button class="back-btn" onclick="S.head=null;setView('heads')">← Back to ${esc(S.zone?.name||'Zone')}</button>
-    <div class="card">
-      <div class="card-title">Head details</div>
-      <div class="field"><label>Brand</label>
-        <select id="hb">${BRANDS.map(b=>`<option${h.brand===b?' selected':''}>${b}</option>`).join('')}</select>
-      </div>
-      <div class="field"><label>Head type</label>
-        <select id="ht">${HEAD_TYPES.map(t=>`<option${h.type===t?' selected':''}>${t}</option>`).join('')}</select>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Arc coverage</label>
-          <select id="ha">${ARCS.map(a=>`<option${h.arc===a?' selected':''}>${a}</option>`).join('')}</select>
-        </div>
-        <div class="field"><label>Throw radius (ft)</label>
-          <input type="text" id="hr" value="${esc(h.radius||'')}" placeholder="e.g. 12">
-        </div>
-      </div>
-      <div class="field"><label>Primary grass type</label>
-        <select id="hgrass">
-          <option value="">— Select —</option>
-          ${GRASSES.map(g=>`<option${h.grass===g?' selected':''}>${g}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label>Notes</label>
-        <textarea id="hno" placeholder="Clogged, broken cap, low pressure...">${esc(h.notes||'')}</textarea>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">GPS location</div>
-      <div class="${gps?'gps-box':'gps-box no-gps'}">
-        <div style="font-size:13px;font-weight:500;color:${gps?'var(--green)':'var(--g600)'}">
-          ${gps?'✓ Location saved':'No GPS tag yet'}
-        </div>
-        ${gps
-          ?`<div class="gps-coords">${h.lat}, ${h.lng}</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-sm btn-green" id="gps-btn" onclick="captureGPS()">Update location</button>
-              <a class="map-link" href="https://maps.apple.com/?q=${h.lat},${h.lng}" target="_blank">Apple Maps</a>
-              <a class="map-link" href="https://maps.google.com/?q=${h.lat},${h.lng}" target="_blank">Google Maps</a>
-            </div>`
-          :`<div class="gps-coords no-gps">Stand over this head and tap below</div>
-            <button class="btn btn-green btn-full" id="gps-btn" onclick="captureGPS()">Capture my location</button>`
-        }
-      </div>
-      <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:500;color:var(--g600);">Or enter manually</label>
-      <div class="row2">
-        <div class="field"><label>Latitude</label><input type="text" id="hlat" value="${esc(h.lat||'')}" placeholder="33.7490" inputmode="decimal"></div>
-        <div class="field"><label>Longitude</label><input type="text" id="hlng" value="${esc(h.lng||'')}" placeholder="-84.3880" inputmode="decimal"></div>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:40px;">
-      <button class="btn btn-green btn-full" id="head-save" onclick="saveHead(false)">${isEdit?'Save changes':'Save head'}</button>
-      ${!isEdit?`<button class="btn btn-outline-green btn-full" id="head-save-another" onclick="saveHead(true)">Save &amp; add another head</button>`:''}
-    </div>
-  </div>`;
-}
-
-function rSummary(){
-  const zones=S.zones;
-  const allH=S.heads;
-  let total=allH.length,gpsC=0,rotors=0,misters=0,drip=0;
-  allH.forEach(h=>{
-    if(h.lat&&h.lng)gpsC++;
-    if(h.type==='Rotor'||h.type==='MP rotator')rotors++;
-    else if(h.type==='Fixed mist')misters++;
-    else if(h.type==='Drip emitter'||h.type==='Bubbler')drip++;
-  });
-  const pct=total>0?Math.round(gpsC/total*100):0;
-
-  const csv=[['Zone','Zone Name','Area','Head #','Brand','Type','Arc','Radius (ft)','Grass','Lat','Lng','Notes']];
-  allH.forEach((h,hi)=>{
-    const z=zones.find(z=>z.id===h.zone_id)||{};
-    csv.push([zones.indexOf(z)+1,z.name||'',z.area||'',hi+1,h.brand,h.type,h.arc,h.radius||'',h.grass||'',h.lat||'',h.lng||'',h.notes||'']);
-  });
-  window._csv=csv.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-
-  const txt=zones.map((z,i)=>{
-    const zh=allH.filter(h=>h.zone_id===z.id);
-    const lines=[`ZONE ${i+1}: ${z.name}`,`Area: ${z.area||'—'}`,`Notes: ${z.notes||'—'}`,`Heads (${zh.length}):`];
-    zh.forEach((h,hi)=>{
-      const g=h.lat&&h.lng?` | GPS: ${h.lat},${h.lng}`:'';
-      lines.push(`  ${hi+1}. ${h.brand} ${h.type} | ${h.arc} | ${h.radius||'?'}ft | Grass: ${h.grass||'—'}${h.notes?' | '+h.notes:''}${g}`);
-    });
-    return lines.join('\n');
-  }).join('\n\n');
-  window._txt=txt;
-
-  const zrows=zones.map((z,i)=>{
-    const zh=allH.filter(h=>h.zone_id===z.id);
-    const hg=zh.filter(h=>h.lat&&h.lng).length;
-    const zp=zh.length>0?Math.round(hg/zh.length*100):0;
-    return`<div class="list-item" onclick="S.zone=S.zones.find(x=>x.id==='${z.id}');loadHeads('${z.id}')">
-      <div>
-        <div class="list-item-name">${esc(z.name)}</div>
-        <div class="list-item-meta">${zh.length} heads · ${hg}/${zh.length} GPS · ${esc(z.area||'No area')}</div>
-        <div class="prog-bar" style="width:120px;margin-top:6px;"><div class="prog-fill" style="width:${zp}%"></div></div>
-      </div>
-      <span class="chevron">›</span>
-    </div>`;
-  }).join('');
-
-  return rTopbar(esc(S.property?.name||'Summary'),'Summary',false)+rBread()+`<div class="main">
-    <button class="back-btn" onclick="setView('zones')">← Back to zones</button>
-    <div class="stats-grid">
-      <div class="stat"><div class="stat-val">${zones.length}</div><div class="stat-lbl">Zones</div></div>
-      <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Heads</div></div>
-      <div class="stat"><div class="stat-val">${gpsC}</div><div class="stat-lbl">GPS tagged</div></div>
-      <div class="stat"><div class="stat-val">${pct}%</div><div class="stat-lbl">Coverage</div></div>
-    </div>
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">GPS progress</div>
-      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
-      <div style="font-size:12px;color:var(--g400);margin-top:4px;">${gpsC} of ${total} heads tagged</div>
-    </div>
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">Head types</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <span class="badge badge-rotor">${rotors} rotor/MP</span>
-        <span class="badge badge-mist">${misters} mist</span>
-        <span class="badge badge-drip">${drip} drip/bubbler</span>
-        ${total-rotors-misters-drip>0?`<span class="badge">${total-rotors-misters-drip} other</span>`:''}
-      </div>
-    </div>
-    <div style="margin-bottom:10px;">${zrows}</div>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:10px;">Export data</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(window._txt||'').then(()=>toast('Copied!')).catch(()=>toast('Copy failed'))">Copy text</button>
-        <button class="btn btn-sm btn-green" onclick="(()=>{const b=new Blob([window._csv||''],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='sprinkler-map.csv';a.click();URL.revokeObjectURL(u);setTimeout(()=>{window.location.href='mailto:?subject='+encodeURIComponent('Sprinkler Map Data')+'&body='+encodeURIComponent('CSV attached.\n\n'+(window._txt||''));},600);})()">Email as CSV</button>
-      </div>
-      <div class="export-box">${esc(txt)}</div>
-    </div>
-    <div style="height:40px;"></div>
-  </div>`;
-}
-
-async function exportPropertyCSV(pid){
-  toast('Preparing CSV...');
-  const{data:zones}=await sb.from('zones').select('*').eq('property_id',pid).order('created_at');
-  const{data:heads}=await sb.from('heads').select('*').in('zone_id',(zones||[]).map(z=>z.id)).order('item_type').order('created_at');
-  const prop=S.properties.find(p=>p.id===pid)||{};
-  const rows=[['Property','Address','Zone','Controller #','Area','Item','#','Brand','Type','Arc/Size','Radius/Size','Grass','Latitude','Longitude','Notes']];
-  (zones||[]).forEach(z=>{
-    const zh=(heads||[]).filter(h=>h.zone_id===z.id&&h.item_type!=='valve');
-    const valve=(heads||[]).find(h=>h.zone_id===z.id&&h.item_type==='valve');
-    if(valve){
-      rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','Valve','',valve.valve_brand||'',valve.valve_type||'','',valve.valve_size||'','',valve.lat||'',valve.lng||'',valve.notes||'']);
+    if (open && zHeads.length > 0) {
+      html += `<div class="tree-head-list">`;
+      zHeads.forEach(h => {
+        const label = [h.brand, h.type].filter(Boolean).join(' ') || 'Head';
+        html += `<div class="tree-head">${esc(label)}</div>`;
+      });
+      html += `</div>`;
+    } else if (open && zHeads.length === 0) {
+      html += `<div class="tree-head-list"><div style="font-size:12px;color:var(--g300);padding:2px 6px;">No heads yet</div></div>`;
     }
-    if(zh.length===0&&!valve){
-      rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','','','','','','','','','','']);
+    html += `</div>`;
+  });
+
+  if (!zones || zones.length === 0) html += `<div style="font-size:12px;color:var(--g400);padding:4px 8px;">No zones yet</div>`;
+
+  html += `</div></div>`;
+  body.innerHTML = html;
+}
+
+function toggleTreeZone(zoneId) {
+  S.treeExpanded[zoneId] = !S.treeExpanded[zoneId];
+  renderTree();
+}
+
+// ── Auth ─────────────────────────────────────────────────
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  S.user = session?.user || null;
+  if (!S.user) { renderLogin(); return; }
+  loadProperties();
+}
+
+function renderLogin(msg='') {
+  app.innerHTML = `
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px;">
+    <div style="text-align:center;margin-bottom:8px;">
+      <div style="font-size:36px;margin-bottom:8px;">💧</div>
+      <div style="font-size:22px;font-weight:700;">Sprinkler Map</div>
+      <div style="font-size:14px;color:var(--g500);margin-top:4px;">System documentation tool</div>
+    </div>
+    ${msg ? `<div style="background:var(--red-l);color:var(--red);border-radius:8px;padding:10px 14px;font-size:14px;width:100%;">${esc(msg)}</div>` : ''}
+    <div class="card" style="width:100%;">
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="li-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input id="li-pass" type="password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-green btn-full" onclick="doLogin()">Sign In</button>
+        <button class="btn btn-gray btn-full" onclick="renderSignup()">Create Account</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderSignup(msg='') {
+  app.innerHTML = `
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px;">
+    <div style="text-align:center;margin-bottom:8px;">
+      <div style="font-size:36px;margin-bottom:8px;">💧</div>
+      <div style="font-size:22px;font-weight:700;">Create Account</div>
+    </div>
+    ${msg ? `<div style="background:var(--red-l);color:var(--red);border-radius:8px;padding:10px 14px;font-size:14px;width:100%;">${esc(msg)}</div>` : ''}
+    <div class="card" style="width:100%;">
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="su-email" type="email" class="form-input" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input id="su-pass" type="password" class="form-input" placeholder="min 6 characters">
+        </div>
+        <button class="btn btn-green btn-full" onclick="doSignup()">Create Account</button>
+        <button class="btn btn-gray btn-full" onclick="renderLogin()">Back to Sign In</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const pass  = document.getElementById('li-pass').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { renderLogin(error.message); return; }
+  S.user = data.user;
+  loadProperties();
+}
+
+async function doSignup() {
+  const email = document.getElementById('su-email').value.trim();
+  const pass  = document.getElementById('su-pass').value;
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { renderSignup(error.message); return; }
+  S.user = data.user;
+  loadProperties();
+}
+
+// ── Properties ───────────────────────────────────────────
+async function loadProperties() {
+  S.view = 'properties';
+  renderLoading('Properties');
+  const { data } = await sb.from('properties').select('*').order('created_at');
+  S.properties = data || [];
+  renderProperties();
+}
+
+function renderProperties() {
+  const list = S.properties.length
+    ? S.properties.map(p => `
+      <div class="row" onclick="openProperty('${p.id}')">
+        <div class="row-icon green">🏡</div>
+        <div class="row-body">
+          <div class="row-name">${esc(p.name)}</div>
+          ${p.address ? `<div class="row-sub">${esc(p.address)}</div>` : ''}
+        </div>
+        <svg class="row-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`).join('')
+    : `<div class="empty"><div class="empty-icon">🏡</div><div class="empty-title">No properties yet</div><div class="empty-sub">Add your first property to get started</div></div>`;
+
+  app.innerHTML = `
+  <div class="topbar">
+    <span class="topbar-title">💧 Sprinkler Map</span>
+    <button class="icon-btn" title="Sign out" onclick="doSignout()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+  <div class="page">
+    <div class="card"><div class="card-body">${list}</div></div>
+    <button class="btn btn-green btn-full" onclick="renderAddProperty()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Property
+    </button>
+  </div>`;
+}
+
+function renderAddProperty() {
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="renderProperties()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      Properties
+    </button>
+    <span class="topbar-title">Add Property</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Property Name *</label>
+          <input id="p-name" class="form-input" placeholder="e.g. Main House">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input id="p-addr" class="form-input" placeholder="123 Main St">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="p-notes" class="form-input" rows="3" placeholder="Any relevant notes..."></textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="saveProperty()">Save Property</button>
+    <button class="btn btn-gray btn-full" onclick="renderProperties()">Cancel</button>
+  </div>`;
+}
+
+async function saveProperty() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) { toast('Property name is required'); return; }
+  const payload = {
+    user_id: S.user.id,
+    name,
+    address: document.getElementById('p-addr').value.trim(),
+    notes: document.getElementById('p-notes').value.trim(),
+  };
+  const { data, error } = await sb.from('properties').insert(payload).select().single();
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Property saved!');
+  await loadProperties();
+}
+
+// ── Edit Property ─────────────────────────────────────────
+function renderEditProperty() {
+  const p = S.property;
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openProperty('${p.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(p.name)}
+    </button>
+    <span class="topbar-title">Edit Property</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Property Name *</label>
+          <input id="ep-name" class="form-input" value="${esc(p.name)}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input id="ep-addr" class="form-input" value="${esc(p.address||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="ep-notes" class="form-input" rows="3">${esc(p.notes||'')}</textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="updateProperty()">Save Changes</button>
+    <button class="btn btn-red btn-full" onclick="confirmDeleteProperty()">Delete Property</button>
+    <button class="btn btn-gray btn-full" onclick="openProperty('${p.id}')">Cancel</button>
+  </div>`;
+}
+
+async function updateProperty() {
+  const name = document.getElementById('ep-name').value.trim();
+  if (!name) { toast('Property name is required'); return; }
+  const { data, error } = await sb.from('properties').update({
+    name,
+    address: document.getElementById('ep-addr').value.trim(),
+    notes: document.getElementById('ep-notes').value.trim(),
+  }).eq('id', S.property.id).select().single();
+  if (error) { toast('Error: ' + error.message); return; }
+  S.property = data;
+  toast('Property updated!');
+  openProperty(S.property.id);
+}
+
+async function confirmDeleteProperty() {
+  if (!confirm(`Delete "${S.property.name}" and all its zones and heads? This cannot be undone.`)) return;
+  const { error } = await sb.from('properties').delete().eq('id', S.property.id);
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Property deleted');
+  loadProperties();
+}
+
+// ── Open Property ─────────────────────────────────────────
+async function openProperty(id) {
+  renderLoading();
+  const { data: prop } = await sb.from('properties').select('*').eq('id', id).single();
+  S.property = prop;
+  const { data: zones } = await sb.from('zones').select('*').eq('property_id', id).order('created_at');
+  S.zones = zones || [];
+
+  // count total heads for this property
+  const { count: headCount } = await sb.from('heads').select('*', { count: 'exact', head: true }).eq('property_id', id);
+
+  S.view = 'zones';
+  const list = S.zones.length
+    ? S.zones.map(z => `
+      <div class="row" onclick="openZone('${z.id}')">
+        <div class="row-icon blue">🌿</div>
+        <div class="row-body">
+          <div class="row-name">${esc(z.name)}</div>
+          ${z.area ? `<div class="row-sub">${esc(z.area)}</div>` : ''}
+        </div>
+        <svg class="row-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`).join('')
+    : `<div class="empty"><div class="empty-icon">🌿</div><div class="empty-title">No zones yet</div><div class="empty-sub">Add zones to document this property's irrigation</div></div>`;
+
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="loadProperties()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      Properties
+    </button>
+    <span class="topbar-title">${esc(prop.name)}</span>
+    <button class="icon-btn" title="Property hierarchy" onclick="openTree(); renderTree();">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 17H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-3M9 17h6"/></svg>
+    </button>
+    <button class="icon-btn" title="Edit property" onclick="renderEditProperty()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </button>
+  </div>
+  <div class="page">
+    <div class="summary-grid">
+      <div class="stat-card"><div class="stat-num">${S.zones.length}</div><div class="stat-label">Zones</div></div>
+      <div class="stat-card"><div class="stat-num">${headCount || 0}</div><div class="stat-label">Heads</div></div>
+      <div class="stat-card" onclick="renderSummary()" style="cursor:pointer;border-color:var(--green-m);">
+        <div style="font-size:22px;color:var(--green);">📋</div>
+        <div class="stat-label" style="color:var(--green);font-weight:600;">Summary</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-body">${list}</div></div>
+    <button class="btn btn-green btn-full" onclick="renderAddZone()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Zone
+    </button>
+  </div>`;
+}
+
+// ── Zones ─────────────────────────────────────────────────
+function renderAddZone() {
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openProperty('${S.property.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(S.property.name)}
+    </button>
+    <span class="topbar-title">Add Zone</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Zone Name *</label>
+          <input id="z-name" class="form-input" placeholder="e.g. Front Yard">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area / Location</label>
+          <input id="z-area" class="form-input" placeholder="e.g. 1,200 sq ft">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="z-notes" class="form-input" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="saveZone()">Save Zone</button>
+    <button class="btn btn-gray btn-full" onclick="openProperty('${S.property.id}')">Cancel</button>
+  </div>`;
+}
+
+async function saveZone() {
+  const name = document.getElementById('z-name').value.trim();
+  if (!name) { toast('Zone name is required'); return; }
+  const { error } = await sb.from('zones').insert({
+    user_id: S.user.id,
+    property_id: S.property.id,
+    name,
+    area: document.getElementById('z-area').value.trim(),
+    notes: document.getElementById('z-notes').value.trim(),
+  });
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Zone saved!');
+  openProperty(S.property.id);
+}
+
+// ── Open Zone ─────────────────────────────────────────────
+async function openZone(id) {
+  renderLoading();
+  const { data: zone } = await sb.from('zones').select('*').eq('id', id).single();
+  S.zone = zone;
+  const { data: heads } = await sb.from('heads').select('*').eq('zone_id', id).order('created_at');
+  S.heads = heads || [];
+  S.view = 'heads';
+
+  const list = S.heads.length
+    ? S.heads.map(h => {
+        const label = [h.brand, h.type].filter(Boolean).join(' ') || 'Head';
+        const sub = [h.grass, h.arc ? h.arc + '°' : null, h.radius ? h.radius + ' ft' : null].filter(Boolean).join(' · ');
+        return `<div class="row" onclick="openHead('${h.id}')">
+          <div class="row-icon amber">💦</div>
+          <div class="row-body">
+            <div class="row-name">${esc(label)}</div>
+            ${sub ? `<div class="row-sub">${esc(sub)}</div>` : ''}
+          </div>
+          <svg class="row-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>`;
+      }).join('')
+    : `<div class="empty"><div class="empty-icon">💦</div><div class="empty-title">No heads yet</div><div class="empty-sub">Add sprinkler heads to this zone</div></div>`;
+
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openProperty('${S.property.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(S.property.name)}
+    </button>
+    <span class="topbar-title">${esc(zone.name)}</span>
+    <button class="icon-btn" title="Property hierarchy" onclick="openTree(); renderTree();">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 17H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-3M9 17h6"/></svg>
+    </button>
+    <button class="icon-btn" title="Edit zone" onclick="renderEditZone()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </button>
+  </div>
+  <div class="page">
+    ${zone.area || zone.notes ? `<div class="card"><div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;">
+      ${zone.area ? `<div style="font-size:13px;color:var(--g500);">📐 ${esc(zone.area)}</div>` : ''}
+      ${zone.notes ? `<div style="font-size:13px;color:var(--g500);">${esc(zone.notes)}</div>` : ''}
+    </div></div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
+      <span style="font-size:13px;font-weight:600;color:var(--g500);">${S.heads.length} HEAD${S.heads.length !== 1 ? 'S' : ''}</span>
+    </div>
+    <div class="card"><div class="card-body">${list}</div></div>
+    <button class="btn btn-green btn-full" onclick="renderAddHead()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Head
+    </button>
+  </div>`;
+}
+
+function renderEditZone() {
+  const z = S.zone;
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openZone('${z.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(z.name)}
+    </button>
+    <span class="topbar-title">Edit Zone</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Zone Name *</label>
+          <input id="ez-name" class="form-input" value="${esc(z.name)}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area / Location</label>
+          <input id="ez-area" class="form-input" value="${esc(z.area||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="ez-notes" class="form-input" rows="2">${esc(z.notes||'')}</textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="updateZone()">Save Changes</button>
+    <button class="btn btn-red btn-full" onclick="confirmDeleteZone()">Delete Zone</button>
+    <button class="btn btn-gray btn-full" onclick="openZone('${z.id}')">Cancel</button>
+  </div>`;
+}
+
+async function updateZone() {
+  const name = document.getElementById('ez-name').value.trim();
+  if (!name) { toast('Zone name is required'); return; }
+  const { data, error } = await sb.from('zones').update({
+    name,
+    area: document.getElementById('ez-area').value.trim(),
+    notes: document.getElementById('ez-notes').value.trim(),
+  }).eq('id', S.zone.id).select().single();
+  if (error) { toast('Error: ' + error.message); return; }
+  S.zone = data;
+  toast('Zone updated!');
+  openZone(S.zone.id);
+}
+
+async function confirmDeleteZone() {
+  if (!confirm(`Delete zone "${S.zone.name}" and all its heads?`)) return;
+  const { error } = await sb.from('zones').delete().eq('id', S.zone.id);
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Zone deleted');
+  openProperty(S.property.id);
+}
+
+// ── Heads ─────────────────────────────────────────────────
+function renderAddHead(prefill) {
+  const p = prefill || {};
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openZone('${S.zone.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(S.zone.name)}
+    </button>
+    <span class="topbar-title">Add Head</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Brand</label>
+            <select id="h-brand" class="form-input">
+              <option value="">—</option>
+              ${['Hunter','Rain Bird','Toro','Orbit','K-Rain','Nelson','Weathermatic'].map(b=>`<option ${p.brand===b?'selected':''}>${b}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select id="h-type" class="form-input">
+              <option value="">—</option>
+              ${['Rotor','Spray','Rotary','Bubbler','Drip','MP Rotator'].map(t=>`<option ${p.type===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Arc (°)</label>
+            <select id="h-arc" class="form-input">
+              <option value="">—</option>
+              ${['45','90','120','180','210','270','360'].map(a=>`<option ${p.arc===a?'selected':''}>${a}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Radius (ft)</label>
+            <input id="h-radius" class="form-input" placeholder="e.g. 12" value="${esc(p.radius||'')}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Grass Type</label>
+          <select id="h-grass" class="form-input">
+            <option value="">—</option>
+            ${['Bermuda','Fescue','Zoysia','St. Augustine','Bluegrass','Ryegrass','Buffalo','Centipede'].map(g=>`<option ${p.grass===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="h-notes" class="form-input" rows="2" placeholder="Optional...">${esc(p.notes||'')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GPS (optional)</label>
+          <div style="display:flex;gap:8px;">
+            <input id="h-lat" class="form-input" placeholder="Lat" value="${esc(p.lat||'')}">
+            <input id="h-lng" class="form-input" placeholder="Lng" value="${esc(p.lng||'')}">
+          </div>
+          <button class="btn btn-gray btn-sm" style="margin-top:6px;" onclick="getGPS()">📍 Use my location</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="saveHead(false)">Save Head</button>
+    <button class="btn btn-green-outline btn-full" onclick="saveHead(true)">Save & Add Another</button>
+    <button class="btn btn-gray btn-full" onclick="openZone('${S.zone.id}')">Cancel</button>
+  </div>`;
+}
+
+function getGPS() {
+  if (!navigator.geolocation) { toast('GPS not available'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('h-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('h-lng').value = pos.coords.longitude.toFixed(6);
+    toast('Location captured!');
+  }, () => toast('Could not get location'));
+}
+
+async function saveHead(addAnother) {
+  const payload = {
+    user_id: S.user.id,
+    property_id: S.property.id,
+    zone_id: S.zone.id,
+    brand: document.getElementById('h-brand').value,
+    type: document.getElementById('h-type').value,
+    arc: document.getElementById('h-arc').value,
+    radius: document.getElementById('h-radius').value.trim(),
+    grass: document.getElementById('h-grass').value,
+    notes: document.getElementById('h-notes').value.trim(),
+    lat: document.getElementById('h-lat').value.trim(),
+    lng: document.getElementById('h-lng').value.trim(),
+  };
+  const { error } = await sb.from('heads').insert(payload);
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Head saved!');
+  if (addAnother) {
+    renderAddHead({ brand: payload.brand, type: payload.type, arc: payload.arc, grass: payload.grass });
+  } else {
+    openZone(S.zone.id);
+  }
+}
+
+// ── Head Detail ───────────────────────────────────────────
+async function openHead(id) {
+  const { data: head } = await sb.from('heads').select('*').eq('id', id).single();
+  S.head = head;
+  const label = [head.brand, head.type].filter(Boolean).join(' ') || 'Head';
+
+  const details = [
+    ['Brand', head.brand], ['Type', head.type],
+    ['Arc', head.arc ? head.arc + '°' : null],
+    ['Radius', head.radius ? head.radius + ' ft' : null],
+    ['Grass', head.grass],
+    ['GPS', (head.lat && head.lng) ? `${head.lat}, ${head.lng}` : null],
+  ].filter(([,v]) => v);
+
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openZone('${S.zone.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(S.zone.name)}
+    </button>
+    <span class="topbar-title">${esc(label)}</span>
+    <button class="icon-btn" onclick="renderEditHead()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </button>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Head Details</div></div>
+      <div class="head-detail-grid">
+        ${details.map(([k,v]) => `<div class="detail-item"><div class="detail-key">${k}</div><div class="detail-val">${esc(v)}</div></div>`).join('')}
+      </div>
+      ${head.notes ? `<div style="padding:0 16px 14px;font-size:14px;color:var(--g600);">${esc(head.notes)}</div>` : ''}
+    </div>
+    <button class="btn btn-gray btn-full" onclick="openZone('${S.zone.id}')">Back to Zone</button>
+  </div>`;
+}
+
+function renderEditHead() {
+  const h = S.head;
+  renderAddHead({ brand: h.brand, type: h.type, arc: h.arc, radius: h.radius, grass: h.grass, notes: h.notes, lat: h.lat, lng: h.lng });
+  // Override save buttons to update instead
+  setTimeout(() => {
+    const btns = document.querySelectorAll('.btn');
+    // Replace topbar title
+    document.querySelector('.topbar-title').textContent = 'Edit Head';
+    // Replace save button behavior — rebuild page specifically
+  }, 0);
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openHead('${h.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      Head
+    </button>
+    <span class="topbar-title">Edit Head</span>
+  </div>
+  <div class="page">
+    <div class="card">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Brand</label>
+            <select id="h-brand" class="form-input">
+              <option value="">—</option>
+              ${['Hunter','Rain Bird','Toro','Orbit','K-Rain','Nelson','Weathermatic'].map(b=>`<option ${h.brand===b?'selected':''}>${b}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select id="h-type" class="form-input">
+              <option value="">—</option>
+              ${['Rotor','Spray','Rotary','Bubbler','Drip','MP Rotator'].map(t=>`<option ${h.type===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Arc (°)</label>
+            <select id="h-arc" class="form-input">
+              <option value="">—</option>
+              ${['45','90','120','180','210','270','360'].map(a=>`<option ${h.arc===a?'selected':''}>${a}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Radius (ft)</label>
+            <input id="h-radius" class="form-input" value="${esc(h.radius||'')}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Grass Type</label>
+          <select id="h-grass" class="form-input">
+            <option value="">—</option>
+            ${['Bermuda','Fescue','Zoysia','St. Augustine','Bluegrass','Ryegrass','Buffalo','Centipede'].map(g=>`<option ${h.grass===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="h-notes" class="form-input" rows="2">${esc(h.notes||'')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GPS</label>
+          <div style="display:flex;gap:8px;">
+            <input id="h-lat" class="form-input" placeholder="Lat" value="${esc(h.lat||'')}">
+            <input id="h-lng" class="form-input" placeholder="Lng" value="${esc(h.lng||'')}">
+          </div>
+          <button class="btn btn-gray btn-sm" style="margin-top:6px;" onclick="getGPS()">📍 Use my location</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="updateHead()">Save Changes</button>
+    <button class="btn btn-red btn-full" onclick="confirmDeleteHead()">Delete Head</button>
+    <button class="btn btn-gray btn-full" onclick="openHead('${h.id}')">Cancel</button>
+  </div>`;
+}
+
+async function updateHead() {
+  const { data, error } = await sb.from('heads').update({
+    brand: document.getElementById('h-brand').value,
+    type: document.getElementById('h-type').value,
+    arc: document.getElementById('h-arc').value,
+    radius: document.getElementById('h-radius').value.trim(),
+    grass: document.getElementById('h-grass').value,
+    notes: document.getElementById('h-notes').value.trim(),
+    lat: document.getElementById('h-lat').value.trim(),
+    lng: document.getElementById('h-lng').value.trim(),
+  }).eq('id', S.head.id).select().single();
+  if (error) { toast('Error: ' + error.message); return; }
+  S.head = data;
+  toast('Head updated!');
+  openHead(S.head.id);
+}
+
+async function confirmDeleteHead() {
+  if (!confirm('Delete this head?')) return;
+  const { error } = await sb.from('heads').delete().eq('id', S.head.id);
+  if (error) { toast('Error: ' + error.message); return; }
+  toast('Head deleted');
+  openZone(S.zone.id);
+}
+
+// ── Summary ───────────────────────────────────────────────
+async function renderSummary() {
+  renderLoading('Summary');
+  const { data: zones } = await sb.from('zones').select('*').eq('property_id', S.property.id).order('created_at');
+  const { data: allHeads } = await sb.from('heads').select('*').eq('property_id', S.property.id).order('created_at');
+
+  const totalHeads = (allHeads || []).length;
+  let txt = `PROPERTY: ${S.property.name}\n`;
+  if (S.property.address) txt += `Address: ${S.property.address}\n`;
+  txt += `Zones: ${(zones||[]).length}  |  Total Heads: ${totalHeads}\n`;
+  txt += '─'.repeat(36) + '\n\n';
+
+  (zones || []).forEach(z => {
+    const zh = (allHeads || []).filter(h => h.zone_id === z.id);
+    txt += `ZONE: ${z.name}\n`;
+    if (z.area) txt += `  Area: ${z.area}\n`;
+    if (z.notes) txt += `  Notes: ${z.notes}\n`;
+    txt += `  Heads: ${zh.length}\n`;
+    zh.forEach((h, i) => {
+      const parts = [h.brand, h.type, h.arc ? h.arc + '°' : null, h.radius ? h.radius + ' ft' : null, h.grass].filter(Boolean);
+      txt += `  ${i+1}. ${parts.join(' · ') || 'Unspecified'}\n`;
+      if (h.notes) txt += `     Notes: ${h.notes}\n`;
+      if (h.lat && h.lng) txt += `     GPS: ${h.lat}, ${h.lng}\n`;
+    });
+    txt += '\n';
+  });
+
+  window._exportTxt = txt;
+  // build CSV
+  let csv = 'Property,Address,Zone,Zone Area,Zone Notes,Head #,Brand,Type,Arc,Radius,Grass,Notes,Lat,Lng\n';
+  (zones || []).forEach(z => {
+    const zh = (allHeads || []).filter(h => h.zone_id === z.id);
+    if (zh.length === 0) {
+      csv += `"${S.property.name}","${S.property.address||''}","${z.name}","${z.area||''}","${z.notes||''}","","","","","","","","",""\n`;
     } else {
-      zh.forEach((h,hi)=>{
-        rows.push([prop.name,prop.address||'',z.name,z.controller_zone||'',z.area||'','Head',hi+1,h.brand,h.type,h.arc,h.radius||'',h.grass||'',h.lat||'',h.lng||'',h.notes||'']);
+      zh.forEach((h, i) => {
+        csv += `"${S.property.name}","${S.property.address||''}","${z.name}","${z.area||''}","${z.notes||''}","${i+1}","${h.brand||''}","${h.type||''}","${h.arc||''}","${h.radius||''}","${h.grass||''}","${h.notes||''}","${h.lat||''}","${h.lng||''}"\n`;
       });
     }
   });
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob([csv],{type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`${(prop.name||'property').replace(/\s+/g,'-').toLowerCase()}-sprinkler-map.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('CSV downloaded!');
+  window._csvContent = csv;
+
+  app.innerHTML = `
+  <div class="topbar">
+    <button class="back-btn" onclick="openProperty('${S.property.id}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      ${esc(S.property.name)}
+    </button>
+    <span class="topbar-title">Summary</span>
+  </div>
+  <div class="page">
+    <div class="summary-grid">
+      <div class="stat-card"><div class="stat-num">${(zones||[]).length}</div><div class="stat-label">Zones</div></div>
+      <div class="stat-card"><div class="stat-num">${totalHeads}</div><div class="stat-label">Heads</div></div>
+      <div class="stat-card"><div class="stat-num">${totalHeads > 0 && zones && zones.length > 0 ? (totalHeads / zones.length).toFixed(1) : '—'}</div><div class="stat-label">Avg / Zone</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Full Report</div></div>
+      <div style="padding:12px 16px;">
+        <div class="export-box">${esc(txt)}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-gray btn-sm" style="flex:1;" onclick="navigator.clipboard.writeText(window._exportTxt||'').then(()=>toast('Copied!')).catch(()=>toast('Copy failed'))">Copy text</button>
+          <button class="btn btn-green btn-sm" style="flex:1;" onclick="emailCSV()">Email as CSV</button>
+        </div>
+      </div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>`;
 }
 
-initAuth().then(()=>{if(S.view==='properties')loadProperties();});
+function emailCSV() {
+  const blob = new Blob([window._csvContent||''], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sprinkler-map.csv'; a.click();
+  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    window.location.href = `mailto:?subject=${encodeURIComponent('Sprinkler Map — ' + (S.property?.name||''))}&body=${encodeURIComponent('Sprinkler map CSV attached.\n\n' + (window._exportTxt||''))}`;
+  }, 600);
+}
+
+// ── Misc ──────────────────────────────────────────────────
+function renderLoading(title) {
+  app.innerHTML = `
+  <div class="topbar"><span class="topbar-title">${title||'Loading...'}</span></div>
+  <div class="loading-page"><div class="spinner"></div></div>`;
+}
+
+async function doSignout() {
+  await sb.auth.signOut();
+  S.user = null; S.properties = []; S.property = null;
+  renderLogin();
+}
+
+// ── Boot ──────────────────────────────────────────────────
+initAuth();
 </script>
 </body>
 </html>
