@@ -8,6 +8,8 @@
 <title>Sprinkler Map</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
   --green:#1a6b3c;--green-light:#e8f5ee;--green-mid:#4caf7d;
@@ -716,11 +718,13 @@ function rHead(){
   </div>`;
 }
 
-// Zone palette for scatter plot
 const ZONE_COLORS=['#1a6b3c','#1d4ed8','#b45309','#7c3aed','#0891b2','#be123c','#15803d','#c2410c'];
+let _leafletMap=null;
 
 async function loadSummary(){
   setView('loading');
+  // destroy any previous map instance so Leaflet doesn't complain
+  if(_leafletMap){_leafletMap.remove();_leafletMap=null;}
   const zones=S.zones;
   const zids=zones.map(z=>z.id);
   const{data:allH,error}=zids.length>0
@@ -729,122 +733,82 @@ async function loadSummary(){
   if(error){toast('Error loading heads: '+error.message);setView('zones');return;}
   S.allSummaryHeads=allH||[];
   setView('summary');
-  // draw scatter after DOM settles
-  setTimeout(drawScatter,80);
+  setTimeout(initLeafletMap,80);
 }
 
-function drawScatter(){
-  const canvas=document.getElementById('scatter-canvas');
-  if(!canvas)return;
+function initLeafletMap(){
+  const el=document.getElementById('leaflet-map');
+  if(!el)return;
   const allH=S.allSummaryHeads||[];
   const zones=S.zones;
   const gpsH=allH.filter(h=>h.lat&&h.lng);
-  if(gpsH.length===0){canvas.style.display='none';document.getElementById('scatter-empty').style.display='block';return;}
 
-  const W=canvas.offsetWidth||320;
-  canvas.width=W*window.devicePixelRatio;
-  canvas.height=W*window.devicePixelRatio;
-  canvas.style.height=W+'px';
-  const ctx=canvas.getContext('2d');
-  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
-
-  const lats=gpsH.map(h=>parseFloat(h.lat));
-  const lngs=gpsH.map(h=>parseFloat(h.lng));
-  const minLat=Math.min(...lats),maxLat=Math.max(...lats);
-  const minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
-  const pad=32;
-  const rangeX=maxLng-minLng||0.0001;
-  const rangeY=maxLat-minLat||0.0001;
-  // keep aspect ratio
-  const scaleX=(W-pad*2)/rangeX;
-  const scaleY=(W-pad*2)/rangeY;
-  const scale=Math.min(scaleX,scaleY);
-  const offX=pad+(W-pad*2-(rangeX*scale))/2;
-  const offY=pad+(W-pad*2-(rangeY*scale))/2;
-
-  function toXY(lat,lng){
-    return{
-      x:offX+(parseFloat(lng)-minLng)*scale,
-      y:W-offY-(parseFloat(lat)-minLat)*scale
-    };
+  if(gpsH.length===0){
+    el.style.display='none';
+    const emp=document.getElementById('map-empty');
+    if(emp)emp.style.display='block';
+    return;
   }
 
-  // background
-  ctx.fillStyle='#f9fafb';ctx.fillRect(0,0,W,W);
-  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;
-  // grid lines
-  for(let i=0;i<=4;i++){
-    const x=pad+(W-pad*2)*i/4;
-    const y=pad+(W-pad*2)*i/4;
-    ctx.beginPath();ctx.moveTo(x,pad);ctx.lineTo(x,W-pad);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
-  }
+  // init map
+  _leafletMap=L.map(el,{zoomControl:true,attributionControl:true});
 
-  // draw heads grouped by zone
+  // satellite-style tiles via Esri (free, no key needed)
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+    attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+    maxZoom:20
+  }).addTo(_leafletMap);
+
+  // add markers per zone with colored circle markers
+  const allMarkers=[];
   zones.forEach((z,zi)=>{
     const color=ZONE_COLORS[zi%ZONE_COLORS.length];
     const zh=gpsH.filter(h=>h.zone_id===z.id);
     zh.forEach((h,hi)=>{
-      const{x,y}=toXY(h.lat,h.lng);
-      ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);
-      ctx.fillStyle=color;ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
-      // head number label
-      ctx.fillStyle='#fff';ctx.font=`bold ${7}px sans-serif`;
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(hi+1,x,y);
+      const lat=parseFloat(h.lat);
+      const lng=parseFloat(h.lng);
+      // custom div icon with zone color + head number
+      const icon=L.divIcon({
+        className:'',
+        html:`<div style="width:28px;height:28px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:bold 11px sans-serif;color:#fff;">${hi+1}</div>`,
+        iconSize:[28,28],
+        iconAnchor:[14,14],
+        popupAnchor:[0,-16]
+      });
+      const label=[h.brand,h.type].filter(Boolean).join(' ')||'Head';
+      const details=[
+        h.arc?`Arc: ${h.arc}`:'',
+        h.radius?`Radius: ${h.radius} ft`:'',
+        h.grass?`Grass: ${h.grass}`:'',
+        h.notes?`Notes: ${h.notes}`:''
+      ].filter(Boolean).join('<br>');
+      const popup=`<div style="font-family:sans-serif;font-size:13px;min-width:120px;">
+        <div style="font-weight:700;margin-bottom:4px;color:${color};">${z.name}</div>
+        <div style="font-weight:600;">Head ${hi+1} — ${label}</div>
+        ${details?`<div style="color:#555;margin-top:4px;">${details}</div>`:''}
+      </div>`;
+      const marker=L.marker([lat,lng],{icon}).addTo(_leafletMap).bindPopup(popup);
+      allMarkers.push(marker);
     });
   });
 
-  // draw legend
-  const legendY=W-pad+10;
-  let lx=pad;
-  zones.filter(z=>gpsH.some(h=>h.zone_id===z.id)).forEach((z,zi)=>{
-    const color=ZONE_COLORS[zi%ZONE_COLORS.length];
-    ctx.beginPath();ctx.arc(lx+5,legendY,5,0,Math.PI*2);
-    ctx.fillStyle=color;ctx.fill();
-    ctx.fillStyle='#374151';ctx.font=`10px sans-serif`;
-    ctx.textAlign='left';ctx.textBaseline='middle';
-    const label=z.name.length>10?z.name.slice(0,9)+'…':z.name;
-    ctx.fillText(label,lx+13,legendY);
-    lx+=ctx.measureText(label).width+26;
-    if(lx>W-pad)lx=pad;
-  });
-}
-
-function openInMaps(){
-  const allH=S.allSummaryHeads||[];
-  const gpsH=allH.filter(h=>h.lat&&h.lng);
-  if(gpsH.length===0){toast('No GPS-tagged heads to show');return;}
-  // Google Maps with up to 10 waypoints
-  const pts=gpsH.slice(0,10);
-  if(pts.length===1){
-    window.open(`https://maps.google.com/?q=${pts[0].lat},${pts[0].lng}`,'_blank');return;
+  // fit map to all markers
+  if(allMarkers.length===1){
+    _leafletMap.setView([parseFloat(gpsH[0].lat),parseFloat(gpsH[0].lng)],19);
+  }else{
+    const group=L.featureGroup(allMarkers);
+    _leafletMap.fitBounds(group.getBounds().pad(0.15));
   }
-  const origin=`${pts[0].lat},${pts[0].lng}`;
-  const dest=`${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
-  const waypoints=pts.slice(1,-1).map(h=>`${h.lat},${h.lng}`).join('|');
-  const url=`https://maps.google.com/maps/dir/${origin}/${waypoints?waypoints+'/':''}${dest}`;
-  window.open(url,'_blank');
 }
 
 function openAllPinsMap(){
   const allH=S.allSummaryHeads||[];
   const gpsH=allH.filter(h=>h.lat&&h.lng);
   if(gpsH.length===0){toast('No GPS-tagged heads to show');return;}
-  // Build a Google Maps search URL with all pins — use first point as center
-  const center=gpsH[0];
-  // For multiple pins use Maps embed search — open each in sequence isn't ideal,
-  // so instead build a KML-style link showing all via maps/search
-  // Best cross-platform: open Apple Maps on iOS, Google on others
   const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
   if(gpsH.length===1){
-    const url=isIOS
-      ?`https://maps.apple.com/?q=${gpsH[0].lat},${gpsH[0].lng}`
-      :`https://maps.google.com/?q=${gpsH[0].lat},${gpsH[0].lng}`;
-    window.open(url,'_blank');return;
+    window.open(isIOS?`https://maps.apple.com/?q=${gpsH[0].lat},${gpsH[0].lng}`:`https://maps.google.com/?q=${gpsH[0].lat},${gpsH[0].lng}`,'_blank');return;
   }
-  // Multi-point: use Google Maps directions with waypoints (max 10 shown)
   const pts=gpsH.slice(0,10);
   const origin=`${pts[0].lat},${pts[0].lng}`;
   const dest=`${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
@@ -897,7 +861,7 @@ function rSummary(){
     </div>`;
   }).join('');
 
-  // legend for scatter
+  // zone legend items for map
   const legendItems=zones.filter(z=>allH.some(h=>h.zone_id===z.id&&h.lat&&h.lng))
     .map((z,zi)=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:10px;">
       <span style="width:10px;height:10px;border-radius:50%;background:${ZONE_COLORS[zi%ZONE_COLORS.length]};flex-shrink:0;"></span>${esc(z.name)}
@@ -912,16 +876,15 @@ function rSummary(){
       <div class="stat"><div class="stat-val">${pct}%</div><div class="stat-lbl">GPS Coverage</div></div>
     </div>
 
-    ${gpsC>0?`<div class="card" style="margin-bottom:12px;">
+    <div class="card" style="margin-bottom:12px;padding:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div class="card-title" style="margin-bottom:0;">Head locations</div>
-        <button class="btn btn-sm btn-outline-green" onclick="openAllPinsMap()">📍 Open in Maps</button>
+        ${gpsC>0?`<button class="btn btn-sm btn-outline-green" onclick="openAllPinsMap()">↗ Open in Maps</button>`:''}
       </div>
-      <canvas id="scatter-canvas" style="width:100%;border-radius:8px;display:block;"></canvas>
-      <div id="scatter-empty" style="display:none;text-align:center;padding:24px;color:var(--g400);font-size:13px;">No GPS-tagged heads yet</div>
+      <div id="leaflet-map" style="width:100%;height:320px;border-radius:8px;z-index:1;"></div>
+      <div id="map-empty" style="display:none;text-align:center;padding:24px;color:var(--g400);font-size:13px;">No GPS-tagged heads yet — capture GPS when adding heads to see them here.</div>
       ${legendItems?`<div style="margin-top:10px;flex-wrap:wrap;display:flex;">${legendItems}</div>`:''}
-    </div>`:''}
-
+    </div>
     <div class="card" style="margin-bottom:12px;">
       <div class="card-title">GPS progress</div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
