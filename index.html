@@ -547,7 +547,7 @@ function rZones(){
       <span style="font-size:16px;font-weight:600;">Zones (${S.zones.length})</span>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-sm btn-outline-green" onclick="exportPropertyCSV('${p.id}')">Export CSV</button>
-        <button class="btn btn-sm" onclick="setView('summary')">Summary</button>
+        <button class="btn btn-sm" onclick="loadSummary()">Summary</button>
         <button class="btn btn-sm btn-green" onclick="setView('add-zone')">+ Add zone</button>
       </div>
     </div>${list}</div>`;
@@ -716,9 +716,146 @@ function rHead(){
   </div>`;
 }
 
+// Zone palette for scatter plot
+const ZONE_COLORS=['#1a6b3c','#1d4ed8','#b45309','#7c3aed','#0891b2','#be123c','#15803d','#c2410c'];
+
+async function loadSummary(){
+  setView('loading');
+  const zones=S.zones;
+  const zids=zones.map(z=>z.id);
+  const{data:allH,error}=zids.length>0
+    ?await sb.from('heads').select('*').eq('item_type','head').in('zone_id',zids).order('created_at')
+    :{data:[],error:null};
+  if(error){toast('Error loading heads: '+error.message);setView('zones');return;}
+  S.allSummaryHeads=allH||[];
+  setView('summary');
+  // draw scatter after DOM settles
+  setTimeout(drawScatter,80);
+}
+
+function drawScatter(){
+  const canvas=document.getElementById('scatter-canvas');
+  if(!canvas)return;
+  const allH=S.allSummaryHeads||[];
+  const zones=S.zones;
+  const gpsH=allH.filter(h=>h.lat&&h.lng);
+  if(gpsH.length===0){canvas.style.display='none';document.getElementById('scatter-empty').style.display='block';return;}
+
+  const W=canvas.offsetWidth||320;
+  canvas.width=W*window.devicePixelRatio;
+  canvas.height=W*window.devicePixelRatio;
+  canvas.style.height=W+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+
+  const lats=gpsH.map(h=>parseFloat(h.lat));
+  const lngs=gpsH.map(h=>parseFloat(h.lng));
+  const minLat=Math.min(...lats),maxLat=Math.max(...lats);
+  const minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+  const pad=32;
+  const rangeX=maxLng-minLng||0.0001;
+  const rangeY=maxLat-minLat||0.0001;
+  // keep aspect ratio
+  const scaleX=(W-pad*2)/rangeX;
+  const scaleY=(W-pad*2)/rangeY;
+  const scale=Math.min(scaleX,scaleY);
+  const offX=pad+(W-pad*2-(rangeX*scale))/2;
+  const offY=pad+(W-pad*2-(rangeY*scale))/2;
+
+  function toXY(lat,lng){
+    return{
+      x:offX+(parseFloat(lng)-minLng)*scale,
+      y:W-offY-(parseFloat(lat)-minLat)*scale
+    };
+  }
+
+  // background
+  ctx.fillStyle='#f9fafb';ctx.fillRect(0,0,W,W);
+  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;
+  // grid lines
+  for(let i=0;i<=4;i++){
+    const x=pad+(W-pad*2)*i/4;
+    const y=pad+(W-pad*2)*i/4;
+    ctx.beginPath();ctx.moveTo(x,pad);ctx.lineTo(x,W-pad);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
+  }
+
+  // draw heads grouped by zone
+  zones.forEach((z,zi)=>{
+    const color=ZONE_COLORS[zi%ZONE_COLORS.length];
+    const zh=gpsH.filter(h=>h.zone_id===z.id);
+    zh.forEach((h,hi)=>{
+      const{x,y}=toXY(h.lat,h.lng);
+      ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);
+      ctx.fillStyle=color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      // head number label
+      ctx.fillStyle='#fff';ctx.font=`bold ${7}px sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(hi+1,x,y);
+    });
+  });
+
+  // draw legend
+  const legendY=W-pad+10;
+  let lx=pad;
+  zones.filter(z=>gpsH.some(h=>h.zone_id===z.id)).forEach((z,zi)=>{
+    const color=ZONE_COLORS[zi%ZONE_COLORS.length];
+    ctx.beginPath();ctx.arc(lx+5,legendY,5,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+    ctx.fillStyle='#374151';ctx.font=`10px sans-serif`;
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    const label=z.name.length>10?z.name.slice(0,9)+'…':z.name;
+    ctx.fillText(label,lx+13,legendY);
+    lx+=ctx.measureText(label).width+26;
+    if(lx>W-pad)lx=pad;
+  });
+}
+
+function openInMaps(){
+  const allH=S.allSummaryHeads||[];
+  const gpsH=allH.filter(h=>h.lat&&h.lng);
+  if(gpsH.length===0){toast('No GPS-tagged heads to show');return;}
+  // Google Maps with up to 10 waypoints
+  const pts=gpsH.slice(0,10);
+  if(pts.length===1){
+    window.open(`https://maps.google.com/?q=${pts[0].lat},${pts[0].lng}`,'_blank');return;
+  }
+  const origin=`${pts[0].lat},${pts[0].lng}`;
+  const dest=`${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
+  const waypoints=pts.slice(1,-1).map(h=>`${h.lat},${h.lng}`).join('|');
+  const url=`https://maps.google.com/maps/dir/${origin}/${waypoints?waypoints+'/':''}${dest}`;
+  window.open(url,'_blank');
+}
+
+function openAllPinsMap(){
+  const allH=S.allSummaryHeads||[];
+  const gpsH=allH.filter(h=>h.lat&&h.lng);
+  if(gpsH.length===0){toast('No GPS-tagged heads to show');return;}
+  // Build a Google Maps search URL with all pins — use first point as center
+  const center=gpsH[0];
+  // For multiple pins use Maps embed search — open each in sequence isn't ideal,
+  // so instead build a KML-style link showing all via maps/search
+  // Best cross-platform: open Apple Maps on iOS, Google on others
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(gpsH.length===1){
+    const url=isIOS
+      ?`https://maps.apple.com/?q=${gpsH[0].lat},${gpsH[0].lng}`
+      :`https://maps.google.com/?q=${gpsH[0].lat},${gpsH[0].lng}`;
+    window.open(url,'_blank');return;
+  }
+  // Multi-point: use Google Maps directions with waypoints (max 10 shown)
+  const pts=gpsH.slice(0,10);
+  const origin=`${pts[0].lat},${pts[0].lng}`;
+  const dest=`${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
+  const wps=pts.slice(1,-1).map(h=>`${h.lat},${h.lng}`).join('|');
+  const gmUrl=`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${wps?'&waypoints='+encodeURIComponent(wps):''}`;
+  window.open(gmUrl,'_blank');
+}
+
 function rSummary(){
   const zones=S.zones;
-  const allH=S.heads;
+  const allH=S.allSummaryHeads||[];
   let total=allH.length,gpsC=0,rotors=0,misters=0,drip=0;
   allH.forEach(h=>{
     if(h.lat&&h.lng)gpsC++;
@@ -760,6 +897,12 @@ function rSummary(){
     </div>`;
   }).join('');
 
+  // legend for scatter
+  const legendItems=zones.filter(z=>allH.some(h=>h.zone_id===z.id&&h.lat&&h.lng))
+    .map((z,zi)=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:10px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${ZONE_COLORS[zi%ZONE_COLORS.length]};flex-shrink:0;"></span>${esc(z.name)}
+    </span>`).join('');
+
   return rTopbar(esc(S.property?.name||'Summary'),'Summary',false)+rBread()+`<div class="main">
     <button class="back-btn" onclick="setView('zones')">← Back to zones</button>
     <div class="stats-grid">
@@ -768,6 +911,17 @@ function rSummary(){
       <div class="stat"><div class="stat-val">${gpsC}</div><div class="stat-lbl">GPS Tagged</div></div>
       <div class="stat"><div class="stat-val">${pct}%</div><div class="stat-lbl">GPS Coverage</div></div>
     </div>
+
+    ${gpsC>0?`<div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-title" style="margin-bottom:0;">Head locations</div>
+        <button class="btn btn-sm btn-outline-green" onclick="openAllPinsMap()">📍 Open in Maps</button>
+      </div>
+      <canvas id="scatter-canvas" style="width:100%;border-radius:8px;display:block;"></canvas>
+      <div id="scatter-empty" style="display:none;text-align:center;padding:24px;color:var(--g400);font-size:13px;">No GPS-tagged heads yet</div>
+      ${legendItems?`<div style="margin-top:10px;flex-wrap:wrap;display:flex;">${legendItems}</div>`:''}
+    </div>`:''}
+
     <div class="card" style="margin-bottom:12px;">
       <div class="card-title">GPS progress</div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
